@@ -194,6 +194,7 @@ void* handleClient(void* arg) {
     char buffer[1024] = {0};
     char response[1024] = {0};
     int flag = 1;
+    
     printf("%d numarali istemci baglandi.\n", clientSocket);
     while (flag) {
         memset(buffer, 0, sizeof(buffer));
