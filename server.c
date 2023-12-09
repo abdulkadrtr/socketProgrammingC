@@ -146,7 +146,7 @@ void handleListFriends(char* buffer, int clientSocket){
     free(result);
     fclose(fp);
 }
-
+//adres listesinde kullanıcı var mı yok mu kontrol eder
 bool checkContactList(FILE *fp,char* phoneNumber){
     users user;
     char line[100];
@@ -159,7 +159,7 @@ bool checkContactList(FILE *fp,char* phoneNumber){
     }
     return false;
 }
-
+//rehbere kullanıcı ekler
 void handleAddToList(char* buffer,int clientSocket){
     char fileName[30];
     users user1,user2;
@@ -187,14 +187,14 @@ void handleAddToList(char* buffer,int clientSocket){
         free(result);
     }
 }
-
+// Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
 void* handleClient(void* arg) {
     int* clientSocketPtr = (int*)arg;
     int clientSocket = *clientSocketPtr;
     char buffer[1024] = {0};
     char response[1024] = {0};
     int flag = 1;
-    
+
     printf("%d numarali istemci baglandi.\n", clientSocket);
     while (flag) {
         memset(buffer, 0, sizeof(buffer));
