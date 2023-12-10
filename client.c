@@ -24,7 +24,7 @@ typedef struct users{
     char phoneNumber[13];// +901231231212 (13 karakter)
 } users;
 
-users userlogin(int client_fd){
+users userLogin(int client_fd){
     users user;
     char data[100];
     char buffer[10];
@@ -149,7 +149,7 @@ int main(int argc, char const* argv[]) {
         scanf("%d",&choice);
         switch(choice){
             case 1:
-                users user = login(client_fd);
+                users user = userLogin(client_fd);
                 if(user.userId == -1){
                     printf("Kullanici adi veya sifre hatali!\n");
                 }

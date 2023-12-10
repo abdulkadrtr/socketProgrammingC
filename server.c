@@ -237,7 +237,6 @@ void* handleClient(void* arg) {
     char buffer[1024] = {0};
     char response[1024] = {0};
     int flag = 1;
-
     printf("%d numarali istemci baglandi.\n", clientSocket);
     while (flag) {
         memset(buffer, 0, sizeof(buffer));
@@ -245,21 +244,21 @@ void* handleClient(void* arg) {
         if (valread == 0) {
             flag = 0;
         }
-        printf("Client %d: %.*s\n", clientSocket, valread, buffer);
+        //printf("Client %d: %.*s\n", clientSocket, valread, buffer);
         if(strncmp(buffer,"/login",6)==0){
-            printf("login\n");
+            printf("%d -> Giris yapma istegi\n",clientSocket);
             handleLogin(buffer+7,clientSocket);
         }else if(strncmp(buffer,"/register",9)==0){
-            printf("register\n");
+            printf("%d -> Kayit olma istegi\n",clientSocket);
             handleRegister(buffer+10,clientSocket);
         }else if(strncmp(buffer,"/listFriends",12)==0){
-            printf("listFriends\n");
+            printf("%d -> Rehber listeleme istegi\n",clientSocket);
             handleListFriends(buffer+13,clientSocket);
         }else if(strncmp(buffer,"/addToList",10)==0){
-            printf("addToList\n");
+            printf("%d -> Rehbere ekleme istegi\n",clientSocket);
             handleAddToList(buffer+11,clientSocket);
         }else if(strncmp(buffer,"/deleteFromList",15)==0){
-            printf("deleteFromList\n");
+            printf("%d -> Rehberden silme istegi\n",clientSocket);
             handleDeleteFromList(buffer+16,clientSocket);
         }
     }
