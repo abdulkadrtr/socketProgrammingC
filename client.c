@@ -24,7 +24,7 @@ typedef struct users{
     char phoneNumber[13];// +901231231212 (13 karakter)
 } users;
 
-users login(int client_fd){
+users userlogin(int client_fd){
     users user;
     char data[100];
     char buffer[10];
@@ -73,7 +73,7 @@ void userRegister(int client_fd){
     }
 }
 
-void listFriends(users user,int client_fd){
+void userListFriends(users user,int client_fd){
     char data[100];
     char buffer[10];
     sprintf(data,"/listFriends,%d,%s",user.userId,user.phoneNumber);
@@ -89,7 +89,7 @@ void listFriends(users user,int client_fd){
     }
 }
 
-void addToList(users user,int client_fd){
+void userAddToList(users user,int client_fd){
     char data[100];
     char buffer[10];
     users userIn;
@@ -114,7 +114,7 @@ void addToList(users user,int client_fd){
     }
 }
 
-void deleteFromList(users user,int client_fd){
+void userDeleteFromList(users user,int client_fd){
     char data[100];
     char buffer[10];
     char phoneNumberD[15];
@@ -162,13 +162,13 @@ int main(int argc, char const* argv[]) {
                         scanf("%d",&choice);
                         switch(choice){
                             case 1:
-                                listFriends(user,client_fd);
+                                userListFriends(user,client_fd);
                                 break;
                             case 2:
-                                addToList(user,client_fd);
+                                userAddToList(user,client_fd);
                                 break;
                             case 3:
-                                deleteFromList(user,client_fd);
+                                userDeleteFromList(user,client_fd);
                                 break;
                             case 4:
                                 break;
