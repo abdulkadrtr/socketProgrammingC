@@ -8,22 +8,29 @@ typedef struct users{
     char password[20];
     char phoneNumber[13];// +901231231212 (13 karakter)
 } users;
+typedef struct messages{
+    int messageId;
+    int senderId;
+    int receiverId;
+    char message[140];
+    char date[16];
+} messages;
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-int main(){
-    FILE *fp;
-    users user;
-    fp = fopen("rehber/+905515968786.csv","a+");
-    if(fp == NULL){
-        printf("Dosya acilamadi!\n");
-        exit(1);
-    }
-    char line[100];
-    while(fgets(line, 100, fp) != NULL){
-        printf("%s",line);
-        //sscanf(line, "%d,%[^,],%[^,],%[^,],%s", &user.userId, user.phoneNumber, user.password, user.name, user.surname);
-        //printf("%d %s %s %s %s\n",user.userId,user.phoneNumber,user.password,user.name,user.surname);
-    }
-    fclose(fp);
+struct Message {
+    char date[20];  // Örnek bir uzunluk, ihtiyaca göre ayarlanabilir
+};
+
+int main() {
+    struct Message message;
+    time_t currentTime;
+    time(&currentTime);
+    struct tm* localTime = localtime(&currentTime);
+    strftime(message.date, sizeof(message.date), "%H-%M-%S:%d-%m-%Y", localTime);
+    printf("Elde Edilen Tarih: %s\n", message.date);
+
     return 0;
 }

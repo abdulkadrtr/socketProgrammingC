@@ -4,17 +4,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include<stdbool.h>
+#include <stdbool.h>
+#include <pthread.h>
+#include <time.h>
 
 #define PORT 8080
 #define MAX_MESSAGE_SIZE 1024
-
-int createSocket();
-void setServerAddress(struct sockaddr_in *serv_addr);
-int establishConnection(int client_fd, struct sockaddr_in *serv_addr);
-void sendMessage(int client_fd, const char *message);
-void receiveMessage(int client_fd, char *buffer);
-
 
 typedef struct users{
     int userId; // benzersiz id
@@ -23,6 +18,174 @@ typedef struct users{
     char password[20];
     char phoneNumber[13];// +901231231212 (13 karakter)
 } users;
+
+typedef struct messages{
+    char senderId[15];
+    char receiverId[15];
+    char message[140];
+    char date[20];
+    char status[2]; // + : okundu, - : okunmadı
+} messages;
+
+int createSocket();
+int establishConnection(int client_fd, struct sockaddr_in *serv_addr);
+void setServerAddress(struct sockaddr_in *serv_addr);
+void sendMessage(int client_fd, const char *message);
+void receiveMessage(int client_fd, char *buffer);
+void userRegister(int client_fd);
+void userListFriends(users user,int client_fd);
+void userAddToList(users user,int client_fd);
+void userDeleteFromList(users user,int client_fd);
+users userLogin(int client_fd);
+
+void userSendMessage(users user,int client_fd){
+    userListFriends(user,client_fd);
+    messages message;
+    char data[300];
+    char buffer[10];
+    char phoneNumberD[15];
+    time_t currentTime;
+    printf("Mesaj gondermek istediginiz kisinin telefon numarasini giriniz (+90..) : ");
+    scanf("%s",phoneNumberD);
+    while(getchar() != '\n');
+    printf("Mesajinizi giriniz: ");
+    scanf("%[^\n]", message.message);
+    time(&currentTime);
+    struct tm* localTime = localtime(&currentTime);
+    strftime(message.date, sizeof(message.date), "%H-%M-%S:%d-%m-%Y", localTime);
+    ///sendMessage , senderId , receiverId , message , date , status
+    strcpy(message.status,"-");
+    sprintf(data,"/sendMessage,%s,%s,%s,%s,%s",user.phoneNumber,phoneNumberD,message.date,message.status,message.message);
+    sendMessage(client_fd,data);
+    receiveMessage(client_fd,buffer);
+    if(strcmp(buffer,"valid")==0){
+        printf("Mesaj basariyla gonderildi!\n");
+        return;
+    }else{
+        printf("HATA!\n");
+        return;
+    }
+}
+
+int main(int argc, char const* argv[]) {
+    int client_fd, status,choice,flagMenu;
+    struct sockaddr_in serv_addr;
+    char buffer[MAX_MESSAGE_SIZE] = { 0 }, response[20];
+	int flag = 1;
+    client_fd = createSocket();
+    setServerAddress(&serv_addr);
+    status = establishConnection(client_fd, &serv_addr);
+    if (status < 0) {
+        printf("Baglanti hatasi!\n");
+        exit(-1);
+    }
+    while (flag) {
+        printf("Yapmak istediginiz islemi seciniz:\n1) Giris Yap\n2) Kayit Ol\n3) Cikis\n");
+        scanf("%d",&choice);
+        switch(choice){
+            case 1:
+                users user = userLogin(client_fd);
+                if(user.userId == -1){
+                    printf("Kullanici adi veya sifre hatali!\n");
+                }
+                else{
+                    system("clear");
+                    printf("Hosgeldiniz %s %s\n",user.name,user.surname);
+                    flagMenu = 1;
+                    while(flagMenu){
+                        printf("\n1) Arkadaslarim\n2) Arkadas Ekle\n3) Arkadas Sil\n4) Mesaj Gonder\n5) Mesajlari Al\n6) Cikis\n");
+                        scanf("%d",&choice);
+                        switch(choice){
+                            case 1:
+                                userListFriends(user,client_fd);
+                                break;
+                            case 2:
+                                userAddToList(user,client_fd);
+                                break;
+                            case 3:
+                                userDeleteFromList(user,client_fd);
+                                break;
+                            case 4:
+                                userSendMessage(user,client_fd);
+                                break;
+                            case 5:
+                                break;
+                            case 6: 
+                                flagMenu = 0;
+                                break;
+                            default:
+                                printf("Gecersiz islem!\n");
+                                break;
+                        }
+                    }
+
+                }
+                break;
+            case 2:
+                userRegister(client_fd);
+                break;
+            case 3:
+                flag = 0;
+                break;
+            default:
+                printf("Gecersiz islem!\n");
+                break;
+        }
+        /*
+        printf("Gondermek istedigin mesaj: (cikis icin 'exit'): ");
+        fgets(buffer, MAX_MESSAGE_SIZE, stdin);
+        size_t len = strlen(buffer);
+        if (len > 0 && buffer[len - 1] == '\n') {
+            buffer[len - 1] = '\0';
+        }
+        if (strcmp(buffer, "exit") == 0) {
+            flag = 0;
+        }
+        sendMessage(client_fd, buffer);
+        */
+        //receiveMessage(client_fd, buffer);
+    }
+    close(client_fd);
+    return 0;
+}
+
+int createSocket() {
+    int client_fd;
+    if ((client_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        printf("\n Socket creation error \n");
+        return -1;
+    }
+    return client_fd;
+}
+
+void setServerAddress(struct sockaddr_in *serv_addr) {
+    serv_addr->sin_family = AF_INET;
+    serv_addr->sin_port = htons(PORT);
+
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr->sin_addr) <= 0) {
+        printf("\nInvalid address/ Address not supported \n");
+        exit(-1);
+    }
+}
+
+int establishConnection(int client_fd, struct sockaddr_in *serv_addr) {
+    int status;
+    if ((status = connect(client_fd, (struct sockaddr*)serv_addr, sizeof(*serv_addr))) < 0) {
+        printf("\nConnection Failed \n");
+        exit(-1);
+    }
+    return status;
+}
+
+void sendMessage(int client_fd, const char *message) {
+    send(client_fd, message, strlen(message), 0);
+}
+
+void receiveMessage(int client_fd, char *buffer) {
+    int valread = read(client_fd, buffer, MAX_MESSAGE_SIZE - 1);
+    buffer[valread] = '\0';
+    //printf("Gelen Mesaj: %s\n", buffer);
+}
 
 users userLogin(int client_fd){
     users user;
@@ -133,120 +296,4 @@ void userDeleteFromList(users user,int client_fd){
         printf("HATA!\n");
         return;
     }
-}
-
-int main(int argc, char const* argv[]) {
-    int client_fd, status,choice,flagMenu;
-    struct sockaddr_in serv_addr;
-    char buffer[MAX_MESSAGE_SIZE] = { 0 }, response[20];
-	int flag = 1;
-    client_fd = createSocket();
-    setServerAddress(&serv_addr);
-    status = establishConnection(client_fd, &serv_addr);
-    printf("Giris Yapiniz\n");
-    while (flag) {
-        printf("Yapmak istediginiz islemi seciniz:\n1) Giris Yap\n2) Kayit Ol\n3) Cikis\n");
-        scanf("%d",&choice);
-        switch(choice){
-            case 1:
-                users user = userLogin(client_fd);
-                if(user.userId == -1){
-                    printf("Kullanici adi veya sifre hatali!\n");
-                }
-                else{
-                    system("clear");
-                    printf("Hosgeldiniz %s %s\n",user.name,user.surname);
-                    flagMenu = 1;
-                    while(flagMenu){
-                        printf("\n1) Arkadaslarim\n2) Arkadas Ekle\n3) Arkadas Sil\n4) Mesaj Gonder\n5) Mesajlari Al\n6) Cikis\n");
-                        scanf("%d",&choice);
-                        switch(choice){
-                            case 1:
-                                userListFriends(user,client_fd);
-                                break;
-                            case 2:
-                                userAddToList(user,client_fd);
-                                break;
-                            case 3:
-                                userDeleteFromList(user,client_fd);
-                                break;
-                            case 4:
-                                break;
-                            case 5:
-                                break;
-                            case 6: 
-                                flagMenu = 0;
-                                break;
-                            default:
-                                printf("Gecersiz islem!\n");
-                                break;
-                        }
-                    }
-
-                }
-                break;
-            case 2:
-                userRegister(client_fd);
-                break;
-            case 3:
-                flag = 0;
-                break;
-            default:
-                printf("Gecersiz islem!\n");
-                break;
-        }
-        /*
-        printf("Gondermek istedigin mesaj: (cikis icin 'exit'): ");
-        fgets(buffer, MAX_MESSAGE_SIZE, stdin);
-        size_t len = strlen(buffer);
-        if (len > 0 && buffer[len - 1] == '\n') {
-            buffer[len - 1] = '\0';
-        }
-        if (strcmp(buffer, "exit") == 0) {
-            flag = 0;
-        }
-        sendMessage(client_fd, buffer);
-        */
-        //receiveMessage(client_fd, buffer);
-    }
-    close(client_fd);
-    return 0;
-}
-
-int createSocket() {
-    int client_fd;
-    if ((client_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("\n Socket creation error \n");
-        return -1;
-    }
-    return client_fd;
-}
-
-void setServerAddress(struct sockaddr_in *serv_addr) {
-    serv_addr->sin_family = AF_INET;
-    serv_addr->sin_port = htons(PORT);
-
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr->sin_addr) <= 0) {
-        printf("\nInvalid address/ Address not supported \n");
-        exit(-1);
-    }
-}
-
-int establishConnection(int client_fd, struct sockaddr_in *serv_addr) {
-    int status;
-    if ((status = connect(client_fd, (struct sockaddr*)serv_addr, sizeof(*serv_addr))) < 0) {
-        printf("\nConnection Failed \n");
-        exit(-1);
-    }
-    return status;
-}
-
-void sendMessage(int client_fd, const char *message) {
-    send(client_fd, message, strlen(message), 0);
-}
-
-void receiveMessage(int client_fd, char *buffer) {
-    int valread = read(client_fd, buffer, MAX_MESSAGE_SIZE - 1);
-    buffer[valread] = '\0';
-    //printf("Gelen Mesaj: %s\n", buffer);
 }
