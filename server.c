@@ -187,6 +187,49 @@ void handleAddToList(char* buffer,int clientSocket){
         free(result);
     }
 }
+//rehberden kullanıcı siler
+void handleDeleteFromList(char* buffer,int clientSocket){
+    char fileName[30];
+    char phoneNumber[14];
+    char phoneNumberD[14];
+    char* result;
+    char line[100];
+    int found;
+    sscanf(buffer, "%[^,],%s", phoneNumber, phoneNumberD);
+    // filename = rehber + user.phoneNumber + .csv
+    sprintf(fileName, "rehber/%s.csv", phoneNumber);
+    FILE* inputFp = fopen(fileName, "r");
+    FILE* tempFp = fopen("temp.csv", "w");
+    if(inputFp == NULL || tempFp == NULL){
+        printf("Dosya acilamadi!\n");
+        exit(1);
+    }
+    while(fgets(line,100,inputFp) != NULL){
+        if(strstr(line,phoneNumberD) != NULL){
+            found = 1;
+        
+        }else{
+            fputs(line,tempFp);
+        }
+    }
+    fclose(inputFp);
+    fclose(tempFp);
+    if(found){
+        remove(fileName);
+        rename("temp.csv",fileName);
+        char* result = malloc(strlen("deleted") + 1);
+        strcpy(result, "deleted");
+        send(clientSocket, result, strlen(result), 0);
+        free(result);
+    }else{
+        remove("temp.csv");
+        char* result = malloc(strlen("invalid") + 1);
+        strcpy(result, "invalid");
+        send(clientSocket, result, strlen(result), 0);
+        free(result);
+    }
+}
+
 // Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
 void* handleClient(void* arg) {
     int* clientSocketPtr = (int*)arg;
@@ -215,6 +258,9 @@ void* handleClient(void* arg) {
         }else if(strncmp(buffer,"/addToList",10)==0){
             printf("addToList\n");
             handleAddToList(buffer+11,clientSocket);
+        }else if(strncmp(buffer,"/deleteFromList",15)==0){
+            printf("deleteFromList\n");
+            handleDeleteFromList(buffer+16,clientSocket);
         }
     }
     printf("%d numarali istemcinin baglantisi kesildi.\n", clientSocket);

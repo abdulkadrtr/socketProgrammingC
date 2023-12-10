@@ -29,9 +29,11 @@ users login(int client_fd){
     char data[100];
     char buffer[10];
     printf("Telefon numaranizi giriniz (+90.. seklinde):  ");
-    scanf("%s",user.phoneNumber);
+    //scanf("%s",user.phoneNumber);
+    strcpy(user.phoneNumber,"+905515968786");
     printf("Sifrenizi giriniz: ");
-    scanf("%s",user.password);
+    //scanf("%s",user.password);
+    strcpy(user.password,"1234");
     sprintf(data,"/login,%s,%s",user.phoneNumber,user.password);
     sendMessage(client_fd,data);
     receiveMessage(client_fd,buffer);
@@ -81,7 +83,7 @@ void listFriends(users user,int client_fd){
         printf("Rehberinde kimse yok. Yapayalnizsin!\n");
         return;
     }else{
-        printf("ID\tTelefon Numarasi\tAd\tSoyad\n");
+        printf("Telefon Numarasi\tAd\tSoyad\n");
         printf("%s",buffer);
         return;
     }
@@ -105,6 +107,27 @@ void addToList(users user,int client_fd){
         return;
     }else if(strcmp(buffer,"append")==0){
         printf("Kayit basariyla gerceklestirildi!\n");
+        return;
+    }else{
+        printf("HATA!\n");
+        return;
+    }
+}
+
+void deleteFromList(users user,int client_fd){
+    char data[100];
+    char buffer[10];
+    char phoneNumberD[15];
+    printf("Silmek istediginiz kisinin telefon numarasini giriniz (+90..) : ");
+    scanf("%s",phoneNumberD);
+    sprintf(data,"/deleteFromList,%s,%s",user.phoneNumber,phoneNumberD);
+    sendMessage(client_fd,data);
+    receiveMessage(client_fd,buffer);
+    if(strcmp(buffer,"invalid")==0){
+        printf("Bu numara zaten kayitli degil!\n");
+        return;
+    }else if(strcmp(buffer,"deleted")==0){
+        printf("Kayit basariyla silindi!\n");
         return;
     }else{
         printf("HATA!\n");
@@ -145,6 +168,7 @@ int main(int argc, char const* argv[]) {
                                 addToList(user,client_fd);
                                 break;
                             case 3:
+                                deleteFromList(user,client_fd);
                                 break;
                             case 4:
                                 break;
