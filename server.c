@@ -36,12 +36,26 @@ void sendMessageToClient(int clientSocket);
 bool userCheck(char* phoneNumber);
 int getLastUserId(FILE *fp);
 bool checkContactList(FILE *fp,char* phoneNumber);
+bool fileCheck(char* fileName){
+    FILE *fp;
+    fp = fopen(fileName,"r");
+    if(fp == NULL){
+        return false;
+    }
+    fclose(fp);
+    return true;
+}
+//Burada alıcı,verici.csv veya verici,alıcı.csv dosyasında her sohbet kaydı tutulur.
 void handleSendMessage(char* buffer,int clientSocket){
-    char fileName[30];
+    char fileName[50];
     messages message;
     ///senderId , receiverId , message , date , status
     sscanf(buffer, "%[^,],%[^,],%[^,],%[^,],%[^\n]",message.senderId,message.receiverId,message.date,message.status,message.message);
-    sprintf(fileName, "mesajlar/%s.csv", message.receiverId);
+    sprintf(fileName, "mesajlar/%s,%s.csv",message.senderId,message.receiverId);
+    if(fileCheck(fileName)==false){
+        fileName[0] = '\0';
+        sprintf(fileName, "mesajlar/%s,%s.csv",message.receiverId,message.senderId);
+    }
     FILE *fp;
     fp = fopen(fileName,"a+");
     if(fp == NULL){
@@ -55,6 +69,7 @@ void handleSendMessage(char* buffer,int clientSocket){
     send(clientSocket, result, strlen(result), 0);
     free(result);
 }
+
 
 // Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
 void* handleClient(void* arg) {

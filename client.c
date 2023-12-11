@@ -67,6 +67,22 @@ void userSendMessage(users user,int client_fd){
     }
 }
 
+void userCheckMessage(users user,int client_fd){
+    char data[100];
+    char buffer[10];
+    sprintf(data,"/checkMessage,%s",user.phoneNumber);
+    sendMessage(client_fd,data);
+    receiveMessage(client_fd,buffer);
+    if(strcmp(buffer,"empty")==0){
+        printf("Mesajiniz yok!\n");
+        return;
+    }else{
+        printf("Telefon Numarasi\tAd\tSoyad\n");
+        printf("%s",buffer);
+        return;
+    }
+}
+
 int main(int argc, char const* argv[]) {
     int client_fd, status,choice,flagMenu;
     struct sockaddr_in serv_addr;
@@ -192,11 +208,11 @@ users userLogin(int client_fd){
     char data[100];
     char buffer[10];
     printf("Telefon numaranizi giriniz (+90.. seklinde):  ");
-    //scanf("%s",user.phoneNumber);
-    strcpy(user.phoneNumber,"+905515968786");
+    scanf("%s",user.phoneNumber);
+    //strcpy(user.phoneNumber,"+905515968786");
     printf("Sifrenizi giriniz: ");
-    //scanf("%s",user.password);
-    strcpy(user.password,"1234");
+    scanf("%s",user.password);
+    //strcpy(user.password,"1234");
     sprintf(data,"/login,%s,%s",user.phoneNumber,user.password);
     sendMessage(client_fd,data);
     receiveMessage(client_fd,buffer);
