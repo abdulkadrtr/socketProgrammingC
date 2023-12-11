@@ -16,7 +16,7 @@ typedef struct users{
     char name[20];
     char surname[20];
     char password[20];
-    char phoneNumber[13];// +901231231212 (13 karakter)
+    char phoneNumber[14];// +901231231212 (13 karakter)
 } users;
 
 typedef struct messages{
