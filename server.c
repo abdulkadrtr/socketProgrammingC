@@ -33,28 +33,54 @@ typedef struct onlineUsers{
     int clientSocket;
 } onlineUsers;
 
+void initializeServer(int* server_fd, struct sockaddr_in* address, int* opt); // Server baslatma fonksiyonu
+void handleLogin(char* buffer, int clientSocket); // Giris yapma fonksiyonu
+void handleRegister(char* buffer,int clientSocket); // Kayit olma fonksiyonu
+void handleListFriends(char* buffer, int clientSocket); // Rehber listeleme fonksiyonu
+void handleAddToList(char* buffer,int clientSocket); // Rehbere ekleme fonksiyonu
+void handleDeleteFromList(char* buffer,int clientSocket); // Rehberden silme fonksiyonu
+void handleSendMessage(char* buffer,int clientSocket); // Mesaj gonderme fonksiyonu
+void handleCheckMessage(char* buffer,int clientSocket); // Mesaj kontrol etme fonksiyonu
+void handleGetMessages(char* buffer,int clientSocket); // Mesajlari getirme fonksiyonu
+void handleDeleteMessage(char* buffer, int clientSocket); // Mesaj silme fonksiyonu
+void sendNotification(char* phone,char* senderPhone,char* message); // Bildirim gonderme fonksiyonu
+void deleteFromNotificationList(int clientSocket); // Bildirim listesinden silme fonksiyonu
+void addToNotificationList(char* phone,int clientSocket); // Bildirim listesine ekleme fonksiyonu
+void* handleClient(void* arg); // Her bir istemci icin bir thread olusturur. İstekleri ayirmak icin kullanilir.
+int getLastMessageId(FILE *fp); // Bir sohbetteki son mesajın id degerini dondurur.
+int getLastUserId(FILE *fp); // users dosyasindaki son kullanici id'sini dondurur.
+bool userCheck(char* phoneNumber); // Kullanici var mi yok mu kontrol eder.
+bool fileCheck(char* fileName); // Dosya var mi yok mu kontrol eder.
+bool checkContactList(FILE *fp,char* phoneNumber); // Rehberde kullanici var mi yok mu kontrol eder.
 
-void initializeServer(int* server_fd, struct sockaddr_in* address, int* opt);
-void handleLogin(char* buffer, int clientSocket);
-void handleRegister(char* buffer,int clientSocket);
-void handleListFriends(char* buffer, int clientSocket);
-void handleAddToList(char* buffer,int clientSocket);
-void handleDeleteFromList(char* buffer,int clientSocket);
-void sendMessageToClient(int clientSocket);
-void handleSendMessage(char* buffer,int clientSocket);
-void handleCheckMessage(char* buffer,int clientSocket);
-void handleGetMessages(char* buffer,int clientSocket);
-void handleDeleteMessage(char* buffer, int clientSocket);
-bool userCheck(char* phoneNumber);
-bool fileCheck(char* fileName);
-bool checkContactList(FILE *fp,char* phoneNumber);
-int getLastMessageId(FILE *fp);
-int getLastUserId(FILE *fp);
-void sendNotification(char* phone,char* senderPhone,char* message);
-void handleGetNotifications(char* buffer,int clientSocket);
+onlineUsers onlineUsersList[MAX_CLIENTS]; // Global degisken, online kullanicilar listesi.
+//Tum threadlarda bu fonksiyonu paylasmak icin gereken struct yapıları parametre aktarımları vs. ile okunabilirligi dusuk kod yerine
+//global degisken kullanilmistir.
 
-onlineUsers onlineUsersList[MAX_CLIENTS];
-
+int main() {
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    int opt = 1;
+    socklen_t addrlen = sizeof(address);
+    pthread_t thread_id[MAX_CLIENTS];
+    initializeServer(&server_fd, &address, &opt);
+    // Server baslatiliyor.
+    int clientCount = 0;
+    printf("SERVER BASLATILDI: %d\n", PORT);
+    while (1) {
+        if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
+            perror("accept");
+            exit(EXIT_FAILURE);
+        }
+        if (pthread_create(&thread_id[clientCount], NULL, handleClient, &new_socket) != 0) {
+            perror("pthread_create");
+            exit(EXIT_FAILURE);
+        }
+        clientCount++;
+    }
+    close(server_fd);
+    return 0;
+}
 
 // Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
 void* handleClient(void* arg) {
@@ -100,7 +126,7 @@ void* handleClient(void* arg) {
             handleDeleteMessage(buffer+15,clientSocket);
         }else if(strncmp(buffer,"/getNotification",16)==0){
             printf("%d -> Bildirimleri getirme istegi\n",clientSocket);
-            handleGetNotifications(buffer+17,clientSocket);
+            addToNotificationList(buffer+17,clientSocket);
         }
     }
     printf("%d numarali istemcinin baglantisi kesildi.\n", clientSocket);
@@ -109,31 +135,6 @@ void* handleClient(void* arg) {
     pthread_exit(NULL);
 }
 
-
-int main() {
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int opt = 1;
-    socklen_t addrlen = sizeof(address);
-    pthread_t thread_id[MAX_CLIENTS];
-    initializeServer(&server_fd, &address, &opt);
-    // Server baslatiliyor.
-    int clientCount = 0;
-    printf("SERVER BASLATILDI: %d\n", PORT);
-    while (1) {
-        if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
-            perror("accept");
-            exit(EXIT_FAILURE);
-        }
-        if (pthread_create(&thread_id[clientCount], NULL, handleClient, &new_socket) != 0) {
-            perror("pthread_create");
-            exit(EXIT_FAILURE);
-        }
-        clientCount++;
-    }
-    close(server_fd);
-    return 0;
-}
 //Kullanıcı offline olunca bildirim listesinden siler.
 void deleteFromNotificationList(int clientSocket){
     int i;
@@ -146,10 +147,9 @@ void deleteFromNotificationList(int clientSocket){
     printf("%d numarali istemci bildirim listesinden silindi.\n", clientSocket);
 }
 //Kullanici online olunca bildirim listesine ekler.
-void handleGetNotifications(char* buffer,int clientSocket){
+void addToNotificationList(char* buffer,int clientSocket){
     char phone[15];
     int i,flag=0;
-    printf("buffer: %s\n",buffer);
     sscanf(buffer, "%s",phone);
     while(flag == 0 && i < MAX_CLIENTS){
         if(onlineUsersList[i].phoneNumber[0] == '\0'){
@@ -369,12 +369,7 @@ void handleDeleteMessage(char* buffer, int clientSocket){
         free(result);
     }
 }
-void sendMessageToClient(int clientSocket) {
-    char message[1024];
-    printf("Enter message to send to client: ");
-    fgets(message, sizeof(message), stdin);
-    send(clientSocket, message, strlen(message), 0);
-}
+
 void initializeServer(int* server_fd, struct sockaddr_in* address, int* opt) {
     if ((*server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");

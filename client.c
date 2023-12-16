@@ -39,28 +39,8 @@ void userAddToList(users user,int client_fd);
 void userDeleteFromList(users user,int client_fd);
 void userSendMessage(users user,int client_fd, char *phoneNumberD);
 void userCheckMessage(users user,int client_fd);
+void* notificationThreadFunc(void* arg);
 users userLogin(int client_fd);
-
-void* notificationThreadFunc(void* arg){
-    users* user = (users*)arg;
-    int client_fd, status;
-    struct sockaddr_in serv_addr;
-    client_fd = createSocket();
-    setServerAddress(&serv_addr);
-    status = establishConnection(client_fd, &serv_addr);
-    if (status < 0) {
-        printf("Baglanti hatasi!\n");
-        exit(-1);
-    }
-    char data[100];
-    char buffer[10];
-    sprintf(data,"/getNotification,%s",user->phoneNumber);
-    sendMessage(client_fd,data);
-    while(1){
-        receiveMessage(client_fd,buffer);
-        printf("Bildirim: %s\n",buffer);
-    }
-}
 
 int main(int argc, char const* argv[]) {
     int client_fd, status,choice,flagMenu,ret,flag=1;
@@ -103,6 +83,7 @@ int main(int argc, char const* argv[]) {
                                 userAddToList(user,client_fd);
                                 break;
                             case 3:
+                                userListFriends(user,client_fd);
                                 userDeleteFromList(user,client_fd);
                                 break;
                             case 4:
@@ -139,6 +120,27 @@ int main(int argc, char const* argv[]) {
     return 0;
 }
 
+
+void* notificationThreadFunc(void* arg){
+    users* user = (users*)arg;
+    int client_fd, status;
+    struct sockaddr_in serv_addr;
+    client_fd = createSocket();
+    setServerAddress(&serv_addr);
+    status = establishConnection(client_fd, &serv_addr);
+    if (status < 0) {
+        printf("Baglanti hatasi!\n");
+        exit(-1);
+    }
+    char data[100];
+    char buffer[10];
+    sprintf(data,"/getNotification,%s",user->phoneNumber);
+    sendMessage(client_fd,data);
+    while(1){
+        receiveMessage(client_fd,buffer);
+        printf("Bildirim: %s\n",buffer);
+    }
+}
 // mesaj gonderme islemini gerceklestirir.
 void userSendMessage(users user,int client_fd, char *phoneNumberD){
     int flag = 0;
