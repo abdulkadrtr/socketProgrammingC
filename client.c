@@ -267,12 +267,12 @@ users userLogin(int client_fd){
     users user;
     char data[100];
     char buffer[10];
-    //printf("Telefon numaranizi giriniz (+90.. seklinde):  ");
-    //scanf("%s",user.phoneNumber);
-    strcpy(user.phoneNumber,"+905515968786");
-    //printf("Sifrenizi giriniz: ");
-    //scanf("%s",user.password);
-    strcpy(user.password,"1234");
+    printf("Telefon numaranizi giriniz (+90.. seklinde):  ");
+    scanf("%s",user.phoneNumber);
+    //strcpy(user.phoneNumber,"+905515968786");
+    printf("Sifrenizi giriniz: ");
+    scanf("%s",user.password);
+    //strcpy(user.password,"1234");
     sprintf(data,"/login,%s,%s",user.phoneNumber,user.password);
     sendMessage(client_fd,data);
     receiveMessage(client_fd,buffer);

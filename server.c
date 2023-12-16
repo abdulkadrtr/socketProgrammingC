@@ -48,24 +48,30 @@ bool fileCheck(char* fileName){
     return true;
 }
 //Bir sohbetteki mesaj id değerini döndürür.
-int getLastMessageId(FILE *fp){
+int getLastMessageId(FILE *fp) {
     messages message;
-    int lastMessageId = -1,flag = 0;
+    int lastMessageId = -1;
     fseek(fp, 0, SEEK_END);
     long fileSize = ftell(fp);
-    do {
-        fseek(fp, -2, SEEK_CUR); // İki karakter geri gidin (bir karakter \n, diğeri rakam)
-        if (ftell(fp) <= 0) {
-            fseek(fp, 0, SEEK_SET); // Dosyanın başına gelin, eğer dosyanın başına gelinmişse
-            flag = 1;
+    if (fileSize > 0) {
+        fseek(fp, -1, SEEK_END); // Move one character back from the end
+        int newlineCount = 0;
+        while (ftell(fp) > 0) {
+            char c = fgetc(fp);
+            if (c == '\n') {
+                newlineCount++;
+                if (newlineCount == 2) {
+                    break; // Found the second newline character, exit the loop
+                }
+            }
+            fseek(fp, -2, SEEK_CUR); // Move two characters back
         }
-    } while (fgetc(fp) != '\n' && flag == 0);
-    if (ftell(fp) > 0) {
         fscanf(fp, "%d,%[^,],%[^,],%[^,],%[^,],%[^\n]", &message.messageId, message.senderId, message.receiverId, message.date, message.status, message.message);
         lastMessageId = message.messageId;
     }
     return lastMessageId;
 }
+
 
 //Burada alıcı,verici.csv veya verici,alıcı.csv dosyasında her sohbet kaydı tutulur.
 void handleSendMessage(char* buffer,int clientSocket){
@@ -85,8 +91,9 @@ void handleSendMessage(char* buffer,int clientSocket){
         exit(1);
     }
     int lastMessageId = getLastMessageId(fp);
+    printf("lastMessageId: %d\n",lastMessageId);
     message.messageId = (lastMessageId == -1) ? 1 : lastMessageId + 1;
-    fprintf(fp, "\n%d,%s,%s,%s,%s,%s", message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
+    fprintf(fp, "%d,%s,%s,%s,%s,%s\n", message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
     fclose(fp);
     char* result = malloc(strlen("valid") + 1);
     strcpy(result, "valid");
@@ -156,6 +163,7 @@ void handleGetMessages(char* buffer,int clientSocket){
         memset(&message,0,sizeof(message));
         sscanf(line, "%d,%[^,],%[^,],%[^,],%[^,],%[^\n]", &message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
         if(strcmp(message.status,"-") == 0 && strcmp(message.receiverId,phone) == 0){
+            printf("---------------------\n");
             strcpy(message.status,"+");
             sprintf(line, "%d,%s,%s,%s,%s,%s\n", message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
             //dosyada da bu değişikliği yap
@@ -419,7 +427,6 @@ void handleRegister(char* buffer,int clientSocket){
     }
     int lastUserId = getLastUserId(fp);
     user.userId = (lastUserId == -1) ? 100 : lastUserId + 1;
-    printf("%d\n", user.userId);
     fprintf(fp, "\n%d,%s,%s,%s,%s", user.userId, user.phoneNumber, user.password, user.name, user.surname);
     fclose(fp);
     char* result = malloc(strlen("append") + 1);
