@@ -172,7 +172,6 @@ void handleSendMessage(char* buffer,int clientSocket){
         exit(1);
     }
     lastMessageId = getLastMessageId(fp);
-    printf("lastMessageId: %d\n",lastMessageId);
     message.messageId = (lastMessageId == -1) ? 1 : lastMessageId + 1;
     fprintf(fp, "%d,%s,%s,%s,%s,%s\n", message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
     fclose(fp);
