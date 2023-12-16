@@ -47,7 +47,7 @@ bool fileCheck(char* fileName){
     fclose(fp);
     return true;
 }
-
+//Bir sohbetteki mesaj id değerini döndürür.
 int getLastMessageId(FILE *fp){
     messages message;
     int lastMessageId = -1,flag = 0;
@@ -93,7 +93,7 @@ void handleSendMessage(char* buffer,int clientSocket){
     send(clientSocket, result, strlen(result), 0);
     free(result);
 }
-
+//Sohbet kayıtlarını kontrol eder. Listelenmesini saglar.
 void handleCheckMessage(char* buffer,int clientSocket){
     char phone[15];
     char known[15];
@@ -129,7 +129,7 @@ void handleCheckMessage(char* buffer,int clientSocket){
     sprintf(result, "stop");
     send(clientSocket, result, strlen(result), 0);
 }
-
+//Bir sohbetteki mesajları gönderir.
 void handleGetMessages(char* buffer,int clientSocket){
     char fileName[50];
     char phone[15];
@@ -176,7 +176,7 @@ void handleGetMessages(char* buffer,int clientSocket){
     send(clientSocket, result, strlen(result), 0);
     free(result);
 }
-
+//mesaj silme işlemini gerçekleştirir
 void handleDeleteMessage(char* buffer, int clientSocket){
     char fileName[50];
     char phone[15];

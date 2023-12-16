@@ -39,6 +39,7 @@ void userAddToList(users user,int client_fd);
 void userDeleteFromList(users user,int client_fd);
 users userLogin(int client_fd);
 
+// mesaj gonderme islemini gerceklestirir.
 void userSendMessage(users user,int client_fd, char *phoneNumberD){
     int flag = 0;
     messages message;
@@ -74,7 +75,7 @@ void userSendMessage(users user,int client_fd, char *phoneNumberD){
         return;
     }
 }
-
+// Sohbetlerim istegi yapar, gelen mesajlari listeler, mesaj silme islemi yapar
 void userCheckMessage(users user,int client_fd){
     char data[60];
     char buffer[300];
