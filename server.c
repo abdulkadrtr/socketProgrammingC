@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <dirent.h>
 
 #define PORT 8080
 #define MAX_CLIENTS 10
@@ -70,6 +71,74 @@ void handleSendMessage(char* buffer,int clientSocket){
     free(result);
 }
 
+void handleCheckMessage(char* buffer,int clientSocket){
+    char phone[15];
+    char known[15];
+    char unknown[15];
+    char result[15];
+    sscanf(buffer, "%s",phone);
+    DIR *d;
+    struct dirent *dir;
+    int count=0;
+    d = opendir("mesajlar");
+    if (d){
+        while ((dir = readdir(d)) != NULL){
+            if(strstr(dir->d_name,phone) != NULL){
+                count++;
+                printf("%s\n", dir->d_name);
+                known[0] = '\0';
+                unknown[0] = '\0';
+                result[0] = '\0';
+                sscanf(dir->d_name, "%[^,],%[^.]",known,unknown);
+                if(strcmp(phone,known) == 0){
+                    strcpy(result, unknown);
+                    send(clientSocket, result, strlen(result), 0);
+                }else{
+                    strcpy(result, known);
+                    send(clientSocket, result, strlen(result), 0);
+                }
+            }
+            sleep(0.4);
+        }
+        closedir(d);
+    }
+    sleep(0.6);
+    sprintf(result, "stop");
+    send(clientSocket, result, strlen(result), 0);
+}
+
+void handleGetMessages(char* buffer,int clientSocket){
+    char fileName[50];
+    char phone[15];
+    char phone2[15];
+    sscanf(buffer, "%[^,],%s",phone,phone2);
+    sprintf(fileName, "mesajlar/%s,%s.csv",phone,phone2);
+    if(fileCheck(fileName)==false){
+        fileName[0] = '\0';
+        sprintf(fileName, "mesajlar/%s,%s.csv",phone2,phone);
+    }
+    FILE *fp;
+    fp = fopen(fileName,"a+");
+    if(fp == NULL){
+        printf("Dosya acilamadi!\n");
+        exit(1);
+    }
+    char line[300];
+    char* result = NULL;
+    messages message;
+    while(fgets(line, 300, fp) != NULL){
+        result = malloc(strlen(line) + 1);
+        strcpy(result, line);
+        send(clientSocket, result, strlen(result), 0);
+        free(result);
+        sleep(0.3);
+    }
+    fclose(fp);
+    result = malloc(strlen("stop") + 1);
+    strcpy(result, "stop");
+    send(clientSocket, result, strlen(result), 0);
+    free(result);
+}
 
 // Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
 void* handleClient(void* arg) {
@@ -104,6 +173,12 @@ void* handleClient(void* arg) {
         }else if(strncmp(buffer,"/sendMessage",12)==0){
             printf("%d -> Mesaj gonderme istegi\n",clientSocket);
             handleSendMessage(buffer+13,clientSocket);
+        }else if(strncmp(buffer,"/checkMessage",13)==0){
+            printf("%d -> Mesaj kontrol etme istegi\n",clientSocket);
+            handleCheckMessage(buffer+14,clientSocket);
+        }else if(strncmp(buffer,"/getMessages",12)==0){
+            printf("%d -> Mesajlari getirme istegi\n",clientSocket);
+            handleGetMessages(buffer+13,clientSocket);
         }
     }
     printf("%d numarali istemcinin baglantisi kesildi.\n", clientSocket);

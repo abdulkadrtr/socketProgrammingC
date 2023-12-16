@@ -38,15 +38,19 @@ void userAddToList(users user,int client_fd);
 void userDeleteFromList(users user,int client_fd);
 users userLogin(int client_fd);
 
-void userSendMessage(users user,int client_fd){
-    userListFriends(user,client_fd);
+void userSendMessage(users user,int client_fd, char *phoneNumberD){
+    int flag = 0;
     messages message;
     char data[300];
     char buffer[10];
-    char phoneNumberD[15];
     time_t currentTime;
-    printf("Mesaj gondermek istediginiz kisinin telefon numarasini giriniz (+90..) : ");
-    scanf("%s",phoneNumberD);
+    if(phoneNumberD == NULL){
+        phoneNumberD = (char*)malloc(sizeof(char)*15);
+        userListFriends(user,client_fd);
+        printf("Mesaj gondermek istediginiz kisinin telefon numarasini giriniz (+90..) : ");
+        scanf("%s",phoneNumberD);
+        flag = 1;
+    }
     while(getchar() != '\n');
     printf("Mesajinizi giriniz: ");
     scanf("%[^\n]", message.message);
@@ -60,6 +64,9 @@ void userSendMessage(users user,int client_fd){
     receiveMessage(client_fd,buffer);
     if(strcmp(buffer,"valid")==0){
         printf("Mesaj basariyla gonderildi!\n");
+        if(flag == 1){
+            free(phoneNumberD);
+        }
         return;
     }else{
         printf("HATA!\n");
@@ -68,18 +75,53 @@ void userSendMessage(users user,int client_fd){
 }
 
 void userCheckMessage(users user,int client_fd){
-    char data[100];
-    char buffer[10];
+    char data[60];
+    char buffer[300];
+    char phone[15];
+    int flag = 0;
     sprintf(data,"/checkMessage,%s",user.phoneNumber);
     sendMessage(client_fd,data);
     receiveMessage(client_fd,buffer);
-    if(strcmp(buffer,"empty")==0){
-        printf("Mesajiniz yok!\n");
+    printf("Sohbetleriniz:\n");
+    while(strcmp(buffer,"stop")!=0){
+        flag = 1;
+        sscanf(buffer,"%s",phone);
+        printf("%s ile sohbet kutunuz var. \n",phone);
+        phone[0] = '\0';
+        receiveMessage(client_fd,buffer);        
+    }
+    if(flag == 0){
+        printf("Sohbet kutunuz bos!\n");
         return;
-    }else{
-        printf("Telefon Numarasi\tAd\tSoyad\n");
-        printf("%s",buffer);
-        return;
+    }
+    phone[0] = '\0';
+    printf("Mesajlarinizi gormek istediginiz kisinin telefon numarasi(+90..): ");
+    scanf("%s",phone);
+    memset(data,0,sizeof(data));
+    sprintf(data,"/getMessages,%s,%s",user.phoneNumber,phone);
+    sendMessage(client_fd,data);
+    receiveMessage(client_fd,buffer);
+    messages message;
+    flag = 0;
+    while(strcmp(buffer,"stop")!=0){
+        flag = 1;
+        memset(&message,0,sizeof(message));
+        sscanf(buffer, "%[^,],%[^,],%[^,],%[^,],%[^\n]",message.senderId,message.receiverId,message.date,message.status,message.message);
+        if(strcmp(message.senderId,user.phoneNumber)==0){
+            printf("Ben: %s %s %s\n",message.date,message.status,message.message);
+        }else{
+            printf("%s: %s %s %s\n",message.senderId,message.date,message.status,message.message);
+        }
+        receiveMessage(client_fd,buffer);
+    }
+    if(flag == 0){
+        printf("Bu kisiyle henuz hic konusmadiniz!\n");
+    }
+    printf("Yeni mesaj gondermek icin 1, cikmak icin 0 giriniz: ");
+    int choice;
+    scanf("%d",&choice);
+    if(choice == 1){
+        userSendMessage(user,client_fd,phone);
     }
 }
 
@@ -122,9 +164,11 @@ int main(int argc, char const* argv[]) {
                                 userDeleteFromList(user,client_fd);
                                 break;
                             case 4:
-                                userSendMessage(user,client_fd);
+                                char *phoneNumberD = NULL;
+                                userSendMessage(user,client_fd,phoneNumberD);
                                 break;
                             case 5:
+                                userCheckMessage(user,client_fd);
                                 break;
                             case 6: 
                                 flagMenu = 0;
@@ -207,12 +251,12 @@ users userLogin(int client_fd){
     users user;
     char data[100];
     char buffer[10];
-    printf("Telefon numaranizi giriniz (+90.. seklinde):  ");
-    scanf("%s",user.phoneNumber);
-    //strcpy(user.phoneNumber,"+905515968786");
-    printf("Sifrenizi giriniz: ");
-    scanf("%s",user.password);
-    //strcpy(user.password,"1234");
+    //printf("Telefon numaranizi giriniz (+90.. seklinde):  ");
+    //scanf("%s",user.phoneNumber);
+    strcpy(user.phoneNumber,"+905515968786");
+    //printf("Sifrenizi giriniz: ");
+    //scanf("%s",user.password);
+    strcpy(user.password,"1234");
     sprintf(data,"/login,%s,%s",user.phoneNumber,user.password);
     sendMessage(client_fd,data);
     receiveMessage(client_fd,buffer);
