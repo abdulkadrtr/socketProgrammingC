@@ -28,6 +28,12 @@ typedef struct messages{
     char status[2]; // + : okundu, - : okunmadı
 } messages;
 
+typedef struct onlineUsers{
+    char phoneNumber[15];
+    int clientSocket;
+} onlineUsers;
+
+
 void initializeServer(int* server_fd, struct sockaddr_in* address, int* opt);
 void handleLogin(char* buffer, int clientSocket);
 void handleRegister(char* buffer,int clientSocket);
@@ -44,6 +50,11 @@ bool fileCheck(char* fileName);
 bool checkContactList(FILE *fp,char* phoneNumber);
 int getLastMessageId(FILE *fp);
 int getLastUserId(FILE *fp);
+void sendNotification(char* phone,char* senderPhone,char* message);
+void handleGetNotifications(char* buffer,int clientSocket);
+
+onlineUsers onlineUsersList[MAX_CLIENTS];
+
 
 // Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
 void* handleClient(void* arg) {
@@ -87,10 +98,14 @@ void* handleClient(void* arg) {
         }else if(strncmp(buffer,"/deleteMessage",14)==0){
             printf("%d -> Mesaj silme istegi\n",clientSocket);
             handleDeleteMessage(buffer+15,clientSocket);
+        }else if(strncmp(buffer,"/getNotification",16)==0){
+            printf("%d -> Bildirimleri getirme istegi\n",clientSocket);
+            handleGetNotifications(buffer+17,clientSocket);
         }
     }
     printf("%d numarali istemcinin baglantisi kesildi.\n", clientSocket);
     close(clientSocket);
+    deleteFromNotificationList(clientSocket);
     pthread_exit(NULL);
 }
 
@@ -118,6 +133,45 @@ int main() {
     }
     close(server_fd);
     return 0;
+}
+//Kullanıcı offline olunca bildirim listesinden siler.
+void deleteFromNotificationList(int clientSocket){
+    int i;
+    for(i=0;i<MAX_CLIENTS;i++){
+        if(onlineUsersList[i].clientSocket == clientSocket){
+            onlineUsersList[i].phoneNumber[0] = '\0';
+            onlineUsersList[i].clientSocket = 0;
+        }
+    }
+    printf("%d numarali istemci bildirim listesinden silindi.\n", clientSocket);
+}
+//Kullanici online olunca bildirim listesine ekler.
+void handleGetNotifications(char* buffer,int clientSocket){
+    char phone[15];
+    int i,flag=0;
+    printf("buffer: %s\n",buffer);
+    sscanf(buffer, "%s",phone);
+    while(flag == 0 && i < MAX_CLIENTS){
+        if(onlineUsersList[i].phoneNumber[0] == '\0'){
+            strcpy(onlineUsersList[i].phoneNumber,phone);
+            onlineUsersList[i].clientSocket = clientSocket;
+            flag = 1;
+        }
+        i++;
+    }
+    printf("%d numarali istemci bildirim listesine eklendi.\n", clientSocket);
+}
+//Mesaj yollandigindan kullanici online ise bildirim gonderir.
+void sendNotification(char* phone,char* senderPhone,char* message){
+    int i;
+    for(i=0;i<MAX_CLIENTS;i++){
+        if(strcmp(onlineUsersList[i].phoneNumber,phone) == 0){
+            char* result = malloc(strlen(senderPhone) + strlen(message) + strlen("kullanicisindan mesaj var") + 20);
+            sprintf(result,"%s kullanicisindan mesaj var:\n%s",senderPhone,message);
+            send(onlineUsersList[i].clientSocket, result, strlen(result), 0);
+            free(result);
+        }
+    }
 }
 
 bool fileCheck(char* fileName){
@@ -179,6 +233,8 @@ void handleSendMessage(char* buffer,int clientSocket){
     strcpy(result, "valid");
     send(clientSocket, result, strlen(result), 0);
     free(result);
+    //bildirim icin
+    sendNotification(message.receiverId,message.senderId,message.message);
 }
 //Sohbet kayıtlarını kontrol eder. Listelenmesini saglar.
 void handleCheckMessage(char* buffer,int clientSocket){

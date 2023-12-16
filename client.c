@@ -41,10 +41,31 @@ void userSendMessage(users user,int client_fd, char *phoneNumberD);
 void userCheckMessage(users user,int client_fd);
 users userLogin(int client_fd);
 
+void* notificationThreadFunc(void* arg){
+    users* user = (users*)arg;
+    int client_fd, status;
+    struct sockaddr_in serv_addr;
+    client_fd = createSocket();
+    setServerAddress(&serv_addr);
+    status = establishConnection(client_fd, &serv_addr);
+    if (status < 0) {
+        printf("Baglanti hatasi!\n");
+        exit(-1);
+    }
+    char data[100];
+    char buffer[10];
+    sprintf(data,"/getNotification,%s",user->phoneNumber);
+    sendMessage(client_fd,data);
+    while(1){
+        receiveMessage(client_fd,buffer);
+        printf("Bildirim: %s\n",buffer);
+    }
+}
 
 int main(int argc, char const* argv[]) {
     int client_fd, status,choice,flagMenu,ret,flag=1;
     struct sockaddr_in serv_addr;
+    pthread_t notificationThread;
     client_fd = createSocket();
     setServerAddress(&serv_addr);
     status = establishConnection(client_fd, &serv_addr);
@@ -64,6 +85,12 @@ int main(int argc, char const* argv[]) {
                 else{
                     system("clear");
                     printf("Hosgeldiniz %s %s\n",user.name,user.surname);
+                    users* userPtr = malloc(sizeof(users));
+                    *userPtr = user;
+                    if(pthread_create(&notificationThread, NULL, notificationThreadFunc, userPtr)) {
+                        fprintf(stderr, "Error creating thread\n");
+                        exit(-1);
+                    }
                     flagMenu = 1;
                     while(flagMenu){
                         printf("\n1) Arkadaslarim\n2) Arkadas Ekle\n3) Arkadas Sil\n4) Mesaj Gonder\n5) Sohbetlerim\n6) Cikis\n");
@@ -101,24 +128,12 @@ int main(int argc, char const* argv[]) {
                 break;
             case 3:
                 flag = 0;
+                pthread_cancel(notificationThread);
                 break;
             default:
                 printf("Gecersiz islem!\n");
                 break;
         }
-        /*
-        printf("Gondermek istedigin mesaj: (cikis icin 'exit'): ");
-        fgets(buffer, MAX_MESSAGE_SIZE, stdin);
-        size_t len = strlen(buffer);
-        if (len > 0 && buffer[len - 1] == '\n') {
-            buffer[len - 1] = '\0';
-        }
-        if (strcmp(buffer, "exit") == 0) {
-            flag = 0;
-        }
-        sendMessage(client_fd, buffer);
-        */
-        //receiveMessage(client_fd, buffer);
     }
     close(client_fd);
     return 0;
