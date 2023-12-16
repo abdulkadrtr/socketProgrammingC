@@ -31,10 +31,8 @@ int getLastMessageId(FILE *fp) {
     int lastMessageId = -1;
     fseek(fp, 0, SEEK_END);
     long fileSize = ftell(fp);
-
     if (fileSize > 0) {
         fseek(fp, -1, SEEK_END); // Move one character back from the end
-
         int newlineCount = 0;
         while (ftell(fp) > 0) {
             char c = fgetc(fp);
@@ -46,7 +44,6 @@ int getLastMessageId(FILE *fp) {
             }
             fseek(fp, -2, SEEK_CUR); // Move two characters back
         }
-
         fscanf(fp, "%d,%[^,],%[^,],%[^,],%[^,],%[^\n]", &message.messageId, message.senderId, message.receiverId, message.date, message.status, message.message);
         lastMessageId = message.messageId;
     }

@@ -38,6 +38,92 @@ void userListFriends(users user,int client_fd);
 void userAddToList(users user,int client_fd);
 void userDeleteFromList(users user,int client_fd);
 users userLogin(int client_fd);
+void userSendMessage(users user,int client_fd, char *phoneNumberD);
+void userCheckMessage(users user,int client_fd);
+
+int main(int argc, char const* argv[]) {
+    int client_fd, status,choice,flagMenu;
+    struct sockaddr_in serv_addr;
+    char buffer[MAX_MESSAGE_SIZE] = { 0 }, response[20];
+	int flag = 1;
+    client_fd = createSocket();
+    setServerAddress(&serv_addr);
+    status = establishConnection(client_fd, &serv_addr);
+    if (status < 0) {
+        printf("Baglanti hatasi!\n");
+        exit(-1);
+    }
+    while (flag) {
+        printf("Yapmak istediginiz islemi seciniz:\n1) Giris Yap\n2) Kayit Ol\n3) Cikis\n");
+        scanf("%d",&choice);
+        switch(choice){
+            case 1:
+                users user = userLogin(client_fd);
+                if(user.userId == -1){
+                    printf("Kullanici adi veya sifre hatali!\n");
+                }
+                else{
+                    system("clear");
+                    printf("Hosgeldiniz %s %s\n",user.name,user.surname);
+                    flagMenu = 1;
+                    while(flagMenu){
+                        printf("\n1) Arkadaslarim\n2) Arkadas Ekle\n3) Arkadas Sil\n4) Mesaj Gonder\n5) Sohbetlerim\n6) Cikis\n");
+                        scanf("%d",&choice);
+                        switch(choice){
+                            case 1:
+                                userListFriends(user,client_fd);
+                                break;
+                            case 2:
+                                userAddToList(user,client_fd);
+                                break;
+                            case 3:
+                                userDeleteFromList(user,client_fd);
+                                break;
+                            case 4:
+                                char *phoneNumberD = NULL;
+                                userSendMessage(user,client_fd,phoneNumberD);
+                                break;
+                            case 5:
+                                userCheckMessage(user,client_fd);
+                                break;
+                            case 6: 
+                                flagMenu = 0;
+                                break;
+                            default:
+                                printf("Gecersiz islem!\n");
+                                break;
+                        }
+                    }
+
+                }
+                break;
+            case 2:
+                userRegister(client_fd);
+                break;
+            case 3:
+                flag = 0;
+                break;
+            default:
+                printf("Gecersiz islem!\n");
+                break;
+        }
+        /*
+        printf("Gondermek istedigin mesaj: (cikis icin 'exit'): ");
+        fgets(buffer, MAX_MESSAGE_SIZE, stdin);
+        size_t len = strlen(buffer);
+        if (len > 0 && buffer[len - 1] == '\n') {
+            buffer[len - 1] = '\0';
+        }
+        if (strcmp(buffer, "exit") == 0) {
+            flag = 0;
+        }
+        sendMessage(client_fd, buffer);
+        */
+        //receiveMessage(client_fd, buffer);
+    }
+    close(client_fd);
+    return 0;
+}
 
 // mesaj gonderme islemini gerceklestirir.
 void userSendMessage(users user,int client_fd, char *phoneNumberD){
@@ -139,90 +225,6 @@ void userCheckMessage(users user,int client_fd){
             printf("HATA!\n");
         }
     }
-}
-
-int main(int argc, char const* argv[]) {
-    int client_fd, status,choice,flagMenu;
-    struct sockaddr_in serv_addr;
-    char buffer[MAX_MESSAGE_SIZE] = { 0 }, response[20];
-	int flag = 1;
-    client_fd = createSocket();
-    setServerAddress(&serv_addr);
-    status = establishConnection(client_fd, &serv_addr);
-    if (status < 0) {
-        printf("Baglanti hatasi!\n");
-        exit(-1);
-    }
-    while (flag) {
-        printf("Yapmak istediginiz islemi seciniz:\n1) Giris Yap\n2) Kayit Ol\n3) Cikis\n");
-        scanf("%d",&choice);
-        switch(choice){
-            case 1:
-                users user = userLogin(client_fd);
-                if(user.userId == -1){
-                    printf("Kullanici adi veya sifre hatali!\n");
-                }
-                else{
-                    system("clear");
-                    printf("Hosgeldiniz %s %s\n",user.name,user.surname);
-                    flagMenu = 1;
-                    while(flagMenu){
-                        printf("\n1) Arkadaslarim\n2) Arkadas Ekle\n3) Arkadas Sil\n4) Mesaj Gonder\n5) Sohbetlerim\n6) Cikis\n");
-                        scanf("%d",&choice);
-                        switch(choice){
-                            case 1:
-                                userListFriends(user,client_fd);
-                                break;
-                            case 2:
-                                userAddToList(user,client_fd);
-                                break;
-                            case 3:
-                                userDeleteFromList(user,client_fd);
-                                break;
-                            case 4:
-                                char *phoneNumberD = NULL;
-                                userSendMessage(user,client_fd,phoneNumberD);
-                                break;
-                            case 5:
-                                userCheckMessage(user,client_fd);
-                                break;
-                            case 6: 
-                                flagMenu = 0;
-                                break;
-                            default:
-                                printf("Gecersiz islem!\n");
-                                break;
-                        }
-                    }
-
-                }
-                break;
-            case 2:
-                userRegister(client_fd);
-                break;
-            case 3:
-                flag = 0;
-                break;
-            default:
-                printf("Gecersiz islem!\n");
-                break;
-        }
-        /*
-        printf("Gondermek istedigin mesaj: (cikis icin 'exit'): ");
-        fgets(buffer, MAX_MESSAGE_SIZE, stdin);
-        size_t len = strlen(buffer);
-        if (len > 0 && buffer[len - 1] == '\n') {
-            buffer[len - 1] = '\0';
-        }
-        if (strcmp(buffer, "exit") == 0) {
-            flag = 0;
-        }
-        sendMessage(client_fd, buffer);
-        */
-        //receiveMessage(client_fd, buffer);
-    }
-    close(client_fd);
-    return 0;
 }
 
 int createSocket() {

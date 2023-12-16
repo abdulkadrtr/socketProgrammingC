@@ -35,9 +35,91 @@ void handleListFriends(char* buffer, int clientSocket);
 void handleAddToList(char* buffer,int clientSocket);
 void handleDeleteFromList(char* buffer,int clientSocket);
 void sendMessageToClient(int clientSocket);
+void handleSendMessage(char* buffer,int clientSocket);
+void handleCheckMessage(char* buffer,int clientSocket);
+void handleGetMessages(char* buffer,int clientSocket);
+void handleDeleteMessage(char* buffer, int clientSocket);
 bool userCheck(char* phoneNumber);
-int getLastUserId(FILE *fp);
+bool fileCheck(char* fileName);
 bool checkContactList(FILE *fp,char* phoneNumber);
+int getLastMessageId(FILE *fp);
+int getLastUserId(FILE *fp);
+
+// Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
+void* handleClient(void* arg) {
+    int* clientSocketPtr = (int*)arg;
+    int clientSocket = *clientSocketPtr;
+    char buffer[1024] = {0};
+    char response[1024] = {0};
+    int flag = 1;
+    printf("%d numarali istemci baglandi.\n", clientSocket);
+    while (flag) {
+        memset(buffer, 0, sizeof(buffer));
+        int valread = read(clientSocket, buffer, 1024);
+        if (valread == 0) {
+            flag = 0;
+        }
+        //printf("Client %d: %.*s\n", clientSocket, valread, buffer);
+        if(strncmp(buffer,"/login",6)==0){
+            printf("%d -> Giris yapma istegi\n",clientSocket);
+            handleLogin(buffer+7,clientSocket);
+        }else if(strncmp(buffer,"/register",9)==0){
+            printf("%d -> Kayit olma istegi\n",clientSocket);
+            handleRegister(buffer+10,clientSocket);
+        }else if(strncmp(buffer,"/listFriends",12)==0){
+            printf("%d -> Rehber listeleme istegi\n",clientSocket);
+            handleListFriends(buffer+13,clientSocket);
+        }else if(strncmp(buffer,"/addToList",10)==0){
+            printf("%d -> Rehbere ekleme istegi\n",clientSocket);
+            handleAddToList(buffer+11,clientSocket);
+        }else if(strncmp(buffer,"/deleteFromList",15)==0){
+            printf("%d -> Rehberden silme istegi\n",clientSocket);
+            handleDeleteFromList(buffer+16,clientSocket);
+        }else if(strncmp(buffer,"/sendMessage",12)==0){
+            printf("%d -> Mesaj gonderme istegi\n",clientSocket);
+            handleSendMessage(buffer+13,clientSocket);
+        }else if(strncmp(buffer,"/checkMessage",13)==0){
+            printf("%d -> Mesaj kontrol etme istegi\n",clientSocket);
+            handleCheckMessage(buffer+14,clientSocket);
+        }else if(strncmp(buffer,"/getMessages",12)==0){
+            printf("%d -> Mesajlari getirme istegi\n",clientSocket);
+            handleGetMessages(buffer+13,clientSocket);
+        }else if(strncmp(buffer,"/deleteMessage",14)==0){
+            printf("%d -> Mesaj silme istegi\n",clientSocket);
+            handleDeleteMessage(buffer+15,clientSocket);
+        }
+    }
+    printf("%d numarali istemcinin baglantisi kesildi.\n", clientSocket);
+    close(clientSocket);
+    pthread_exit(NULL);
+}
+
+
+int main() {
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    int opt = 1;
+    socklen_t addrlen = sizeof(address);
+    pthread_t thread_id[MAX_CLIENTS];
+    initializeServer(&server_fd, &address, &opt);
+    // Server baslatiliyor.
+    int clientCount = 0;
+    printf("SERVER BASLATILDI: %d\n", PORT);
+    while (1) {
+        if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
+            perror("accept");
+            exit(EXIT_FAILURE);
+        }
+        if (pthread_create(&thread_id[clientCount], NULL, handleClient, &new_socket) != 0) {
+            perror("pthread_create");
+            exit(EXIT_FAILURE);
+        }
+        clientCount++;
+    }
+    close(server_fd);
+    return 0;
+}
+
 bool fileCheck(char* fileName){
     FILE *fp;
     fp = fopen(fileName,"r");
@@ -71,11 +153,10 @@ int getLastMessageId(FILE *fp) {
     }
     return lastMessageId;
 }
-
-
 //Burada alıcı,verici.csv veya verici,alıcı.csv dosyasında her sohbet kaydı tutulur.
 void handleSendMessage(char* buffer,int clientSocket){
     char fileName[50];
+    int lastMessageId;
     messages message;
     ///senderId , receiverId , message , date , status
     sscanf(buffer, "%[^,],%[^,],%[^,],%[^,],%[^\n]",message.senderId,message.receiverId,message.date,message.status,message.message);
@@ -90,7 +171,7 @@ void handleSendMessage(char* buffer,int clientSocket){
         printf("Dosya acilamadi!\n");
         exit(1);
     }
-    int lastMessageId = getLastMessageId(fp);
+    lastMessageId = getLastMessageId(fp);
     printf("lastMessageId: %d\n",lastMessageId);
     message.messageId = (lastMessageId == -1) ? 1 : lastMessageId + 1;
     fprintf(fp, "%d,%s,%s,%s,%s,%s\n", message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
@@ -235,89 +316,12 @@ void handleDeleteMessage(char* buffer, int clientSocket){
         free(result);
     }
 }
-
-// Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
-void* handleClient(void* arg) {
-    int* clientSocketPtr = (int*)arg;
-    int clientSocket = *clientSocketPtr;
-    char buffer[1024] = {0};
-    char response[1024] = {0};
-    int flag = 1;
-    printf("%d numarali istemci baglandi.\n", clientSocket);
-    while (flag) {
-        memset(buffer, 0, sizeof(buffer));
-        int valread = read(clientSocket, buffer, 1024);
-        if (valread == 0) {
-            flag = 0;
-        }
-        //printf("Client %d: %.*s\n", clientSocket, valread, buffer);
-        if(strncmp(buffer,"/login",6)==0){
-            printf("%d -> Giris yapma istegi\n",clientSocket);
-            handleLogin(buffer+7,clientSocket);
-        }else if(strncmp(buffer,"/register",9)==0){
-            printf("%d -> Kayit olma istegi\n",clientSocket);
-            handleRegister(buffer+10,clientSocket);
-        }else if(strncmp(buffer,"/listFriends",12)==0){
-            printf("%d -> Rehber listeleme istegi\n",clientSocket);
-            handleListFriends(buffer+13,clientSocket);
-        }else if(strncmp(buffer,"/addToList",10)==0){
-            printf("%d -> Rehbere ekleme istegi\n",clientSocket);
-            handleAddToList(buffer+11,clientSocket);
-        }else if(strncmp(buffer,"/deleteFromList",15)==0){
-            printf("%d -> Rehberden silme istegi\n",clientSocket);
-            handleDeleteFromList(buffer+16,clientSocket);
-        }else if(strncmp(buffer,"/sendMessage",12)==0){
-            printf("%d -> Mesaj gonderme istegi\n",clientSocket);
-            handleSendMessage(buffer+13,clientSocket);
-        }else if(strncmp(buffer,"/checkMessage",13)==0){
-            printf("%d -> Mesaj kontrol etme istegi\n",clientSocket);
-            handleCheckMessage(buffer+14,clientSocket);
-        }else if(strncmp(buffer,"/getMessages",12)==0){
-            printf("%d -> Mesajlari getirme istegi\n",clientSocket);
-            handleGetMessages(buffer+13,clientSocket);
-        }else if(strncmp(buffer,"/deleteMessage",14)==0){
-            printf("%d -> Mesaj silme istegi\n",clientSocket);
-            handleDeleteMessage(buffer+15,clientSocket);
-        }
-    }
-    printf("%d numarali istemcinin baglantisi kesildi.\n", clientSocket);
-    close(clientSocket);
-    pthread_exit(NULL);
-}
-
-
-int main() {
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int opt = 1;
-    socklen_t addrlen = sizeof(address);
-    pthread_t thread_id[MAX_CLIENTS];
-    initializeServer(&server_fd, &address, &opt);
-    // Server baslatiliyor.
-    int clientCount = 0;
-    printf("SERVER BASLATILDI: %d\n", PORT);
-    while (1) {
-        if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) < 0) {
-            perror("accept");
-            exit(EXIT_FAILURE);
-        }
-        if (pthread_create(&thread_id[clientCount], NULL, handleClient, &new_socket) != 0) {
-            perror("pthread_create");
-            exit(EXIT_FAILURE);
-        }
-        clientCount++;
-    }
-    close(server_fd);
-    return 0;
-}
-
 void sendMessageToClient(int clientSocket) {
     char message[1024];
     printf("Enter message to send to client: ");
     fgets(message, sizeof(message), stdin);
     send(clientSocket, message, strlen(message), 0);
 }
-
 void initializeServer(int* server_fd, struct sockaddr_in* address, int* opt) {
     if ((*server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");
