@@ -138,13 +138,16 @@ void* handleClient(void* arg) {
 //Kullanıcı offline olunca bildirim listesinden siler.
 void deleteFromNotificationList(int clientSocket){
     int i;
+    int flag=0;
     for(i=0;i<MAX_CLIENTS;i++){
         if(onlineUsersList[i].clientSocket == clientSocket){
             onlineUsersList[i].phoneNumber[0] = '\0';
             onlineUsersList[i].clientSocket = 0;
+            flag = 1;
         }
     }
-    printf("%d numarali istemci bildirim listesinden silindi.\n", clientSocket);
+    if(flag == 1)
+        printf("%d numarali istemci bildirim listesinden silindi.\n", clientSocket);
 }
 //Kullanici online olunca bildirim listesine ekler.
 void addToNotificationList(char* buffer,int clientSocket){

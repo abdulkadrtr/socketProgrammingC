@@ -109,7 +109,6 @@ int main(int argc, char const* argv[]) {
                 break;
             case 3:
                 flag = 0;
-                pthread_cancel(notificationThread);
                 break;
             default:
                 printf("Gecersiz islem!\n");
