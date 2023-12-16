@@ -37,15 +37,14 @@ void userRegister(int client_fd);
 void userListFriends(users user,int client_fd);
 void userAddToList(users user,int client_fd);
 void userDeleteFromList(users user,int client_fd);
-users userLogin(int client_fd);
 void userSendMessage(users user,int client_fd, char *phoneNumberD);
 void userCheckMessage(users user,int client_fd);
+users userLogin(int client_fd);
+
 
 int main(int argc, char const* argv[]) {
-    int client_fd, status,choice,flagMenu;
+    int client_fd, status,choice,flagMenu,ret,flag=1;
     struct sockaddr_in serv_addr;
-    char buffer[MAX_MESSAGE_SIZE] = { 0 }, response[20];
-	int flag = 1;
     client_fd = createSocket();
     setServerAddress(&serv_addr);
     status = establishConnection(client_fd, &serv_addr);
@@ -269,6 +268,7 @@ users userLogin(int client_fd){
     users user;
     char data[100];
     char buffer[10];
+    pthread_t notificationThread;
     printf("Telefon numaranizi giriniz (+90.. seklinde):  ");
     scanf("%s",user.phoneNumber);
     //strcpy(user.phoneNumber,"+905515968786");

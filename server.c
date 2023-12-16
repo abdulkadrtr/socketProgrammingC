@@ -196,7 +196,6 @@ void handleCheckMessage(char* buffer,int clientSocket){
         while ((dir = readdir(d)) != NULL){
             if(strstr(dir->d_name,phone) != NULL){
                 count++;
-                printf("%s\n", dir->d_name);
                 known[0] = '\0';
                 unknown[0] = '\0';
                 result[0] = '\0';
@@ -244,7 +243,6 @@ void handleGetMessages(char* buffer,int clientSocket){
         memset(&message,0,sizeof(message));
         sscanf(line, "%d,%[^,],%[^,],%[^,],%[^,],%[^\n]", &message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
         if(strcmp(message.status,"-") == 0 && strcmp(message.receiverId,phone) == 0){
-            printf("---------------------\n");
             strcpy(message.status,"+");
             sprintf(line, "%d,%s,%s,%s,%s,%s\n", message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
             //dosyada da bu değişikliği yap
