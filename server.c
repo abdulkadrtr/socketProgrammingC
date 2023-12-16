@@ -118,8 +118,11 @@ void handleGetMessages(char* buffer,int clientSocket){
         sprintf(fileName, "mesajlar/%s,%s.csv",phone2,phone);
     }
     FILE *fp;
+    FILE *fpTemp;
+    char tempFileName[50] ="temp.csv";
+    fpTemp = fopen(tempFileName,"w");
     fp = fopen(fileName,"a+");
-    if(fp == NULL){
+    if(fp == NULL || fpTemp == NULL){
         printf("Dosya acilamadi!\n");
         exit(1);
     }
@@ -127,6 +130,14 @@ void handleGetMessages(char* buffer,int clientSocket){
     char* result = NULL;
     messages message;
     while(fgets(line, 300, fp) != NULL){
+        memset(&message,0,sizeof(message));
+        sscanf(line, "%[^,],%[^,],%[^,],%[^,],%[^\n]",message.senderId,message.receiverId,message.date,message.status,message.message);
+        if(strcmp(message.status,"-") == 0 && strcmp(message.receiverId,phone) == 0){
+            strcpy(message.status,"+");
+            sprintf(line, "%s,%s,%s,%s,%s\n", message.senderId,message.receiverId,message.date, message.status,message.message);
+            //dosyada da bu değişikliği yap
+        }
+        fputs(line,fpTemp);
         result = malloc(strlen(line) + 1);
         strcpy(result, line);
         send(clientSocket, result, strlen(result), 0);
@@ -134,6 +145,9 @@ void handleGetMessages(char* buffer,int clientSocket){
         sleep(0.3);
     }
     fclose(fp);
+    fclose(fpTemp);
+    remove(fileName);
+    rename(tempFileName,fileName);
     result = malloc(strlen("stop") + 1);
     strcpy(result, "stop");
     send(clientSocket, result, strlen(result), 0);

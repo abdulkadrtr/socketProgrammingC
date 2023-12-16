@@ -110,7 +110,7 @@ void userCheckMessage(users user,int client_fd){
         if(strcmp(message.senderId,user.phoneNumber)==0){
             printf("Ben: %s %s %s\n",message.date,message.status,message.message);
         }else{
-            printf("%s: %s %s %s\n",message.senderId,message.date,message.status,message.message);
+            printf("%s: %s %s\n",message.senderId,message.date,message.message);
         }
         receiveMessage(client_fd,buffer);
     }
@@ -151,7 +151,7 @@ int main(int argc, char const* argv[]) {
                     printf("Hosgeldiniz %s %s\n",user.name,user.surname);
                     flagMenu = 1;
                     while(flagMenu){
-                        printf("\n1) Arkadaslarim\n2) Arkadas Ekle\n3) Arkadas Sil\n4) Mesaj Gonder\n5) Mesajlari Al\n6) Cikis\n");
+                        printf("\n1) Arkadaslarim\n2) Arkadas Ekle\n3) Arkadas Sil\n4) Mesaj Gonder\n5) Sohbetlerim\n6) Cikis\n");
                         scanf("%d",&choice);
                         switch(choice){
                             case 1:
