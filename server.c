@@ -20,6 +20,7 @@ typedef struct users{
 } users;
 
 typedef struct messages{
+    int messageId;
     char senderId[15];
     char receiverId[15];
     char message[140];
@@ -46,6 +47,26 @@ bool fileCheck(char* fileName){
     fclose(fp);
     return true;
 }
+
+int getLastMessageId(FILE *fp){
+    messages message;
+    int lastMessageId = -1,flag = 0;
+    fseek(fp, 0, SEEK_END);
+    long fileSize = ftell(fp);
+    do {
+        fseek(fp, -2, SEEK_CUR); // İki karakter geri gidin (bir karakter \n, diğeri rakam)
+        if (ftell(fp) <= 0) {
+            fseek(fp, 0, SEEK_SET); // Dosyanın başına gelin, eğer dosyanın başına gelinmişse
+            flag = 1;
+        }
+    } while (fgetc(fp) != '\n' && flag == 0);
+    if (ftell(fp) > 0) {
+        fscanf(fp, "%d,%[^,],%[^,],%[^,],%[^,],%[^\n]", &message.messageId, message.senderId, message.receiverId, message.date, message.status, message.message);
+        lastMessageId = message.messageId;
+    }
+    return lastMessageId;
+}
+
 //Burada alıcı,verici.csv veya verici,alıcı.csv dosyasında her sohbet kaydı tutulur.
 void handleSendMessage(char* buffer,int clientSocket){
     char fileName[50];
@@ -63,7 +84,9 @@ void handleSendMessage(char* buffer,int clientSocket){
         printf("Dosya acilamadi!\n");
         exit(1);
     }
-    fprintf(fp, "%s,%s,%s,%s,%s\n", message.senderId,message.receiverId,message.date, message.status,message.message);
+    int lastMessageId = getLastMessageId(fp);
+    message.messageId = (lastMessageId == -1) ? 1 : lastMessageId + 1;
+    fprintf(fp, "\n%d,%s,%s,%s,%s,%s", message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
     fclose(fp);
     char* result = malloc(strlen("valid") + 1);
     strcpy(result, "valid");
@@ -131,10 +154,10 @@ void handleGetMessages(char* buffer,int clientSocket){
     messages message;
     while(fgets(line, 300, fp) != NULL){
         memset(&message,0,sizeof(message));
-        sscanf(line, "%[^,],%[^,],%[^,],%[^,],%[^\n]",message.senderId,message.receiverId,message.date,message.status,message.message);
+        sscanf(line, "%d,%[^,],%[^,],%[^,],%[^,],%[^\n]", &message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
         if(strcmp(message.status,"-") == 0 && strcmp(message.receiverId,phone) == 0){
             strcpy(message.status,"+");
-            sprintf(line, "%s,%s,%s,%s,%s\n", message.senderId,message.receiverId,message.date, message.status,message.message);
+            sprintf(line, "%d,%s,%s,%s,%s,%s\n", message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
             //dosyada da bu değişikliği yap
         }
         fputs(line,fpTemp);
@@ -152,6 +175,57 @@ void handleGetMessages(char* buffer,int clientSocket){
     strcpy(result, "stop");
     send(clientSocket, result, strlen(result), 0);
     free(result);
+}
+
+void handleDeleteMessage(char* buffer, int clientSocket){
+    char fileName[50];
+    char phone[15];
+    char phone2[15];
+    char senderPhone[15];
+    int flag = 0,messageId;
+    sscanf(buffer, "%[^,],%[^,],%d",phone,phone2,&messageId);
+    strcpy(senderPhone,phone);
+    sprintf(fileName, "mesajlar/%s,%s.csv",phone,phone2);
+    if(fileCheck(fileName)==false){
+        memset(fileName,0,sizeof(fileName));
+        sprintf(fileName, "mesajlar/%s,%s.csv",phone2,phone);
+    }
+    FILE *fp;
+    FILE *fpTemp;
+    char tempFileName[50] ="temp.csv";
+    fpTemp = fopen(tempFileName,"w");
+    fp = fopen(fileName,"a+");
+    if(fp == NULL || fpTemp == NULL){
+        printf("Dosya acilamadi!\n");
+        exit(1);
+    }
+    char line[300];
+    char* result = NULL;
+    messages message;
+    while(fgets(line, 300, fp) != NULL){
+        memset(&message,0,sizeof(message));
+        sscanf(line, "%d,%[^,],%[^,],%[^,],%[^,],%[^\n]", &message.messageId,message.senderId,message.receiverId,message.date, message.status,message.message);
+        if(message.messageId != messageId || strcmp(senderPhone,message.senderId) != 0){
+            fputs(line,fpTemp);
+        }else{
+            flag = 1;
+        }
+    }
+    fclose(fp);
+    fclose(fpTemp);
+    remove(fileName);
+    rename(tempFileName,fileName);
+    if(flag == 0){
+        result = malloc(strlen("invalid") + 1);
+        strcpy(result, "invalid");
+        send(clientSocket, result, strlen(result), 0);
+        free(result);
+    }else{
+        result = malloc(strlen("deleted") + 1);
+        strcpy(result, "deleted");
+        send(clientSocket, result, strlen(result), 0);
+        free(result);
+    }
 }
 
 // Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
@@ -193,6 +267,9 @@ void* handleClient(void* arg) {
         }else if(strncmp(buffer,"/getMessages",12)==0){
             printf("%d -> Mesajlari getirme istegi\n",clientSocket);
             handleGetMessages(buffer+13,clientSocket);
+        }else if(strncmp(buffer,"/deleteMessage",14)==0){
+            printf("%d -> Mesaj silme istegi\n",clientSocket);
+            handleDeleteMessage(buffer+15,clientSocket);
         }
     }
     printf("%d numarali istemcinin baglantisi kesildi.\n", clientSocket);

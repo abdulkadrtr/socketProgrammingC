@@ -20,6 +20,7 @@ typedef struct users{
 } users;
 
 typedef struct messages{
+    int messageId;
     char senderId[15];
     char receiverId[15];
     char message[140];
@@ -78,7 +79,7 @@ void userCheckMessage(users user,int client_fd){
     char data[60];
     char buffer[300];
     char phone[15];
-    int flag = 0;
+    int flag = 0,messageId;
     sprintf(data,"/checkMessage,%s",user.phoneNumber);
     sendMessage(client_fd,data);
     receiveMessage(client_fd,buffer);
@@ -106,22 +107,36 @@ void userCheckMessage(users user,int client_fd){
     while(strcmp(buffer,"stop")!=0){
         flag = 1;
         memset(&message,0,sizeof(message));
-        sscanf(buffer, "%[^,],%[^,],%[^,],%[^,],%[^\n]",message.senderId,message.receiverId,message.date,message.status,message.message);
+        sscanf(buffer, "%d,%[^,],%[^,],%[^,],%[^,],%[^\n]",&message.messageId,message.senderId,message.receiverId,message.date,message.status,message.message);
         if(strcmp(message.senderId,user.phoneNumber)==0){
-            printf("Ben: %s %s %s\n",message.date,message.status,message.message);
+            printf("%d Ben: %s %s %s\n",message.messageId,message.date,message.status,message.message);
         }else{
-            printf("%s: %s %s\n",message.senderId,message.date,message.message);
+            printf("%d O  : %s   %s\n",message.messageId,message.date,message.message);
         }
         receiveMessage(client_fd,buffer);
     }
     if(flag == 0){
         printf("Bu kisiyle henuz hic konusmadiniz!\n");
     }
-    printf("Yeni mesaj gondermek icin 1, cikmak icin 0 giriniz: ");
+    printf("Yeni mesaj icin 1'e, mesaj silmek icin 2'ye, cikmak icin 3'e basiniz:");
     int choice;
     scanf("%d",&choice);
     if(choice == 1){
         userSendMessage(user,client_fd,phone);
+    }else if(choice == 2){
+        printf("Silmek istediginiz mesajin id'sini giriniz: ");
+        int messageId;
+        scanf("%d",&messageId);
+        sprintf(data,"/deleteMessage,%s,%s,%d",user.phoneNumber,phone,messageId);
+        sendMessage(client_fd,data);
+        receiveMessage(client_fd,buffer);
+        if(strcmp(buffer,"invalid")==0){
+            printf("%d id degerine sahip mesaj yok veya mesajın gondericisi siz degilsiniz.!\n",messageId);
+        }else if(strcmp(buffer,"deleted")==0){
+            printf("Mesaj basariyla silindi!\n");
+        }else{
+            printf("HATA!\n");
+        }
     }
 }
 
