@@ -131,21 +131,24 @@ void* notificationThreadFunc(void* arg){
         printf("Baglanti hatasi!\n");
         exit(-1);
     }
-    char data[100];
-    char buffer[10];
+    char* data = (char*)malloc(sizeof(char)*100);
+    char* buffer = (char*)malloc(sizeof(char)*200);
     sprintf(data,"/getNotification,%s",user->phoneNumber);
     sendMessage(client_fd,data);
     while(1){
         receiveMessage(client_fd,buffer);
         printf("Bildirim: %s\n",buffer);
     }
+    printf("Thread sonlandi!\n");
+    free(data);
+    free(buffer);
 }
 // mesaj gonderme islemini gerceklestirir.
 void userSendMessage(users user,int client_fd, char *phoneNumberD){
     int flag = 0;
     messages message;
-    char data[300];
-    char buffer[10];
+    char* data = (char*)malloc(sizeof(char)*300);
+    char* buffer = (char*)malloc(sizeof(char)*15);
     time_t currentTime;
     if(phoneNumberD == NULL){
         phoneNumberD = (char*)malloc(sizeof(char)*15);
@@ -170,6 +173,8 @@ void userSendMessage(users user,int client_fd, char *phoneNumberD){
         if(flag == 1){
             free(phoneNumberD);
         }
+        free(data);
+        free(buffer);
         return;
     }else{
         printf("HATA!\n");
@@ -178,9 +183,9 @@ void userSendMessage(users user,int client_fd, char *phoneNumberD){
 }
 // Sohbetlerim istegi yapar, gelen mesajlari listeler, mesaj silme islemi yapar
 void userCheckMessage(users user,int client_fd){
-    char data[60];
-    char buffer[300];
-    char phone[15];
+    char* data = (char*)malloc(sizeof(char)*60);
+    char* buffer = (char*)malloc(sizeof(char)*300);
+    char* phone = (char*)malloc(sizeof(char)*15);
     int flag = 0,messageId;
     sprintf(data,"/checkMessage,%s",user.phoneNumber);
     sendMessage(client_fd,data);
@@ -195,6 +200,9 @@ void userCheckMessage(users user,int client_fd){
     }
     if(flag == 0){
         printf("Sohbet kutunuz bos!\n");
+        free(data);
+        free(buffer);
+        free(phone);
         return;
     }
     phone[0] = '\0';
@@ -240,6 +248,9 @@ void userCheckMessage(users user,int client_fd){
             printf("HATA!\n");
         }
     }
+    free(data);
+    free(buffer);
+    free(phone);
 }
 
 int createSocket() {
@@ -282,8 +293,8 @@ void receiveMessage(int client_fd, char *buffer) {
 
 users userLogin(int client_fd){
     users user;
-    char data[100];
-    char buffer[10];
+    char* data = (char*)malloc(sizeof(char)*100);
+    char* buffer = (char*)malloc(sizeof(char)*10);
     pthread_t notificationThread;
     printf("Telefon numaranizi giriniz (+90.. seklinde):  ");
     scanf("%s",user.phoneNumber);
@@ -300,13 +311,15 @@ users userLogin(int client_fd){
     }else{
         sscanf(buffer,"%s %s %d",user.name,user.surname,&user.userId);
     }
+    free(data);
+    free(buffer);
     return user;
 }
 
 void userRegister(int client_fd){
     users user;
-    char data[100];
-    char buffer[10];
+    char* data = (char*)malloc(sizeof(char)*100);
+    char* buffer = (char*)malloc(sizeof(char)*10);
     printf("Adiniz: ");
     scanf("%s",user.name);
     printf("Soyadiniz: ");
@@ -320,35 +333,45 @@ void userRegister(int client_fd){
     receiveMessage(client_fd,buffer);
     if(strcmp(buffer,"valid")==0){
         printf("Bu numara zaten kayitli!\n");
+        free(data);
+        free(buffer);
         return;
     }else if(strcmp(buffer,"append")==0){
         printf("Kayit basariyla gerceklestirildi!\n");
+        free(data);
+        free(buffer);
         return;
     }else{
         printf("HATA!\n");
+        free(data);
+        free(buffer);
         return;
     }
 }
 
 void userListFriends(users user,int client_fd){
-    char data[100];
-    char buffer[10];
+    char* data = (char*)malloc(sizeof(char)*80);
+    char* buffer = (char*)malloc(sizeof(char)*150);
     sprintf(data,"/listFriends,%d,%s",user.userId,user.phoneNumber);
     sendMessage(client_fd,data);
     receiveMessage(client_fd,buffer);
     if(strcmp(buffer,"empty")==0){
         printf("Rehberinde kimse yok. Yapayalnizsin!\n");
+        free(data);
+        free(buffer);
         return;
     }else{
         printf("Telefon Numarasi\tAd\tSoyad\n");
         printf("%s",buffer);
+        free(data);
+        free(buffer);
         return;
     }
 }
 
 void userAddToList(users user,int client_fd){
-    char data[100];
-    char buffer[10];
+    char* data = (char*)malloc(sizeof(char)*100);
+    char* buffer = (char*)malloc(sizeof(char)*10);
     users userIn;
     printf("Eklemek istediginiz kisinin telefon numarasini giriniz (+90..) : ");
     scanf("%s",userIn.phoneNumber);
@@ -361,20 +384,26 @@ void userAddToList(users user,int client_fd){
     receiveMessage(client_fd,buffer);
     if(strcmp(buffer,"valid")==0){
         printf("Bu numara zaten kayitli!\n");
+        free(data);
+        free(buffer);
         return;
     }else if(strcmp(buffer,"append")==0){
         printf("Kayit basariyla gerceklestirildi!\n");
+        free(data);
+        free(buffer);
         return;
     }else{
         printf("HATA!\n");
+        free(data);
+        free(buffer);
         return;
     }
 }
 
 void userDeleteFromList(users user,int client_fd){
-    char data[100];
-    char buffer[10];
-    char phoneNumberD[15];
+    char* data = (char*)malloc(sizeof(char)*100);
+    char* buffer = (char*)malloc(sizeof(char)*10);
+    char* phoneNumberD = (char*)malloc(sizeof(char)*15);
     printf("Silmek istediginiz kisinin telefon numarasini giriniz (+90..) : ");
     scanf("%s",phoneNumberD);
     sprintf(data,"/deleteFromList,%s,%s",user.phoneNumber,phoneNumberD);
@@ -382,12 +411,21 @@ void userDeleteFromList(users user,int client_fd){
     receiveMessage(client_fd,buffer);
     if(strcmp(buffer,"invalid")==0){
         printf("Bu numara zaten kayitli degil!\n");
+        free(data);
+        free(buffer);
+        free(phoneNumberD);
         return;
     }else if(strcmp(buffer,"deleted")==0){
         printf("Kayit basariyla silindi!\n");
+        free(data);
+        free(buffer);
+        free(phoneNumberD);
         return;
     }else{
         printf("HATA!\n");
+        free(data);
+        free(buffer);
+        free(phoneNumberD);
         return;
     }
 }

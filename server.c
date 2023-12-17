@@ -447,17 +447,22 @@ bool userCheck(char* phoneNumber){
 //dosyanın sonundaki son kullanıcı id'sini döndürür
 int getLastUserId(FILE *fp){
     users user;
-    int lastUserId = -1,flag = 0;
+    int lastUserId = -1;
     fseek(fp, 0, SEEK_END);
     long fileSize = ftell(fp);
-    do {
-        fseek(fp, -2, SEEK_CUR); // İki karakter geri gidin (bir karakter \n, diğeri rakam)
-        if (ftell(fp) <= 0) {
-            fseek(fp, 0, SEEK_SET); // Dosyanın başına gelin, eğer dosyanın başına gelinmişse
-            flag = 1;
+    if (fileSize > 0) {
+        fseek(fp, -1, SEEK_END); // Move one character back from the end
+        int newlineCount = 0;
+        while (ftell(fp) > 0) {
+            char c = fgetc(fp);
+            if (c == '\n') {
+                newlineCount++;
+                if (newlineCount == 2) {
+                    break; // Found the second newline character, exit the loop
+                }
+            }
+            fseek(fp, -2, SEEK_CUR); // Move two characters back
         }
-    } while (fgetc(fp) != '\n' && flag == 0);
-    if (ftell(fp) > 0) {
         fscanf(fp, "%d,%[^,],%[^,],%[^,],%s", &user.userId, user.phoneNumber, user.password, user.name, user.surname);
         lastUserId = user.userId;
     }
@@ -482,7 +487,7 @@ void handleRegister(char* buffer,int clientSocket){
     }
     int lastUserId = getLastUserId(fp);
     user.userId = (lastUserId == -1) ? 100 : lastUserId + 1;
-    fprintf(fp, "\n%d,%s,%s,%s,%s", user.userId, user.phoneNumber, user.password, user.name, user.surname);
+    fprintf(fp, "%d,%s,%s,%s,%s\n", user.userId, user.phoneNumber, user.password, user.name, user.surname);
     fclose(fp);
     char* result = malloc(strlen("append") + 1);
     strcpy(result, "append");
