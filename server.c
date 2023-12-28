@@ -33,19 +33,25 @@ typedef struct onlineUsers{
     int clientSocket;
 } onlineUsers;
 
+typedef struct serverData{
+    int socket;
+    onlineUsers* userList;
+    pthread_mutex_t* mutex;
+} serverData; //Her thread onlineUsers listesini paylasması ve mutex ile senkronize olması icin gerekli struct yapısı.
+
 void initializeServer(int* server_fd, struct sockaddr_in* address, int* opt); // Server baslatma fonksiyonu
 void handleLogin(char* buffer, int clientSocket); // Giris yapma fonksiyonu
 void handleRegister(char* buffer,int clientSocket); // Kayit olma fonksiyonu
 void handleListFriends(char* buffer, int clientSocket); // Rehber listeleme fonksiyonu
 void handleAddToList(char* buffer,int clientSocket); // Rehbere ekleme fonksiyonu
 void handleDeleteFromList(char* buffer,int clientSocket); // Rehberden silme fonksiyonu
-void handleSendMessage(char* buffer,int clientSocket); // Mesaj gonderme fonksiyonu
+void handleSendMessage(char* buffer,int clientSocket,onlineUsers* onlineUsersList); // Mesaj gonderme fonksiyonu
 void handleCheckMessage(char* buffer,int clientSocket); // Mesaj kontrol etme fonksiyonu
 void handleGetMessages(char* buffer,int clientSocket); // Mesajlari getirme fonksiyonu
 void handleDeleteMessage(char* buffer, int clientSocket); // Mesaj silme fonksiyonu
-void sendNotification(char* phone,char* senderPhone,char* message); // Bildirim gonderme fonksiyonu
-void deleteFromNotificationList(int clientSocket); // Bildirim listesinden silme fonksiyonu
-void addToNotificationList(char* phone,int clientSocket); // Bildirim listesine ekleme fonksiyonu
+void sendNotification(char* phone,char* senderPhone,char* message, onlineUsers* onlineUsersList); // Bildirim gonderme fonksiyonu
+void deleteFromNotificationList(int clientSocket, onlineUsers* onlineUsersList, pthread_mutex_t* lock); // Bildirim listesinden silme fonksiyonu
+void addToNotificationList(char* phone,int clientSocket,onlineUsers* onlineUsersList, pthread_mutex_t* lock); // Bildirim listesine ekleme fonksiyonu
 void* handleClient(void* arg); // Her bir istemci icin bir thread olusturur. İstekleri ayirmak icin kullanilir.
 int getLastMessageId(FILE *fp); // Bir sohbetteki son mesajın id degerini dondurur.
 int getLastUserId(FILE *fp); // users dosyasindaki son kullanici id'sini dondurur.
@@ -53,7 +59,7 @@ bool userCheck(char* phoneNumber); // Kullanici var mi yok mu kontrol eder.
 bool fileCheck(char* fileName); // Dosya var mi yok mu kontrol eder.
 bool checkContactList(FILE *fp,char* phoneNumber); // Rehberde kullanici var mi yok mu kontrol eder.
 
-onlineUsers onlineUsersList[MAX_CLIENTS]; // Global degisken, online kullanicilar listesi.
+//onlineUsers onlineUsersList[MAX_CLIENTS]; // Global degisken, online kullanicilar listesi.
 //Tum threadlarda bu fonksiyonu paylasmak icin gereken struct yapıları parametre aktarımları vs. ile okunabilirligi dusuk kod yerine
 //global degisken kullanilmistir.
 
@@ -64,6 +70,9 @@ int main() {
     socklen_t addrlen = sizeof(address);
     pthread_t thread_id[MAX_CLIENTS];
     initializeServer(&server_fd, &address, &opt);
+    onlineUsers* onlineUsersList = (onlineUsers*)malloc(sizeof(onlineUsers)*MAX_CLIENTS);
+    serverData* data = (serverData*)malloc(sizeof(serverData)*MAX_CLIENTS);
+    pthread_mutex_t lock;
     // Server baslatiliyor.
     int clientCount = 0;
     printf("SERVER BASLATILDI: %d\n", PORT);
@@ -72,22 +81,30 @@ int main() {
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        if (pthread_create(&thread_id[clientCount], NULL, handleClient, &new_socket) != 0) {
+        data[clientCount].socket = new_socket;
+        data[clientCount].userList = onlineUsersList;
+        data[clientCount].mutex = &lock;
+        if (pthread_create(&thread_id[clientCount], NULL, handleClient, &data[clientCount]) != 0) {
             perror("pthread_create");
             exit(EXIT_FAILURE);
         }
         clientCount++;
     }
+    free(data);
+    free(onlineUsersList);
     close(server_fd);
     return 0;
 }
 
 // Her bir istemci icin bir thread olusturulur. Bu fonksiyon isteklere cevap verir.
 void* handleClient(void* arg) {
-    int* clientSocketPtr = (int*)arg;
-    int clientSocket = *clientSocketPtr;
+    serverData* dataPtr = (serverData*)arg;
+    serverData data = *dataPtr;
+    int clientSocket = data.socket;
+    pthread_mutex_t* lock = data.mutex;
     char buffer[1024] = {0};
     char response[1024] = {0};
+    onlineUsers* onlineUsersList = data.userList;
     int flag = 1;
     printf("%d numarali istemci baglandi.\n", clientSocket);
     while (flag) {
@@ -114,7 +131,7 @@ void* handleClient(void* arg) {
             handleDeleteFromList(buffer+16,clientSocket);
         }else if(strncmp(buffer,"/sendMessage",12)==0){
             printf("%d -> Mesaj gonderme istegi\n",clientSocket);
-            handleSendMessage(buffer+13,clientSocket);
+            handleSendMessage(buffer+13,clientSocket,onlineUsersList);
         }else if(strncmp(buffer,"/checkMessage",13)==0){
             printf("%d -> Mesaj kontrol etme istegi\n",clientSocket);
             handleCheckMessage(buffer+14,clientSocket);
@@ -126,19 +143,20 @@ void* handleClient(void* arg) {
             handleDeleteMessage(buffer+15,clientSocket);
         }else if(strncmp(buffer,"/getNotification",16)==0){
             printf("%d -> Bildirimleri getirme istegi\n",clientSocket);
-            addToNotificationList(buffer+17,clientSocket);
+            addToNotificationList(buffer+17,clientSocket,onlineUsersList,lock);
         }
     }
     printf("%d numarali istemcinin baglantisi kesildi.\n", clientSocket);
     close(clientSocket);
-    deleteFromNotificationList(clientSocket);
+    deleteFromNotificationList(clientSocket,onlineUsersList,lock);
     pthread_exit(NULL);
 }
 
 //Kullanıcı offline olunca bildirim listesinden siler.
-void deleteFromNotificationList(int clientSocket){
+void deleteFromNotificationList(int clientSocket,onlineUsers* onlineUsersList, pthread_mutex_t* lock){
     int i;
     int flag=0;
+    pthread_mutex_lock(lock);
     for(i=0;i<MAX_CLIENTS;i++){
         if(onlineUsersList[i].clientSocket == clientSocket){
             onlineUsersList[i].phoneNumber[0] = '\0';
@@ -146,14 +164,16 @@ void deleteFromNotificationList(int clientSocket){
             flag = 1;
         }
     }
+    pthread_mutex_unlock(lock);
     if(flag == 1)
         printf("%d numarali istemci bildirim listesinden silindi.\n", clientSocket);
 }
 //Kullanici online olunca bildirim listesine ekler.
-void addToNotificationList(char* buffer,int clientSocket){
+void addToNotificationList(char* buffer,int clientSocket,onlineUsers* onlineUsersList, pthread_mutex_t* lock){
     char phone[15];
     int i,flag=0;
     sscanf(buffer, "%s",phone);
+    pthread_mutex_lock(lock);
     while(flag == 0 && i < MAX_CLIENTS){
         if(onlineUsersList[i].phoneNumber[0] == '\0'){
             strcpy(onlineUsersList[i].phoneNumber,phone);
@@ -162,10 +182,11 @@ void addToNotificationList(char* buffer,int clientSocket){
         }
         i++;
     }
+    pthread_mutex_unlock(lock);
     printf("%d numarali istemci bildirim listesine eklendi.\n", clientSocket);
 }
 //Mesaj yollandigindan kullanici online ise bildirim gonderir.
-void sendNotification(char* phone,char* senderPhone,char* message){
+void sendNotification(char* phone,char* senderPhone,char* message,onlineUsers* onlineUsersList){
     int i;
     for(i=0;i<MAX_CLIENTS;i++){
         if(strcmp(onlineUsersList[i].phoneNumber,phone) == 0){
@@ -211,7 +232,7 @@ int getLastMessageId(FILE *fp) {
     return lastMessageId;
 }
 //Burada alıcı,verici.csv veya verici,alıcı.csv dosyasında her sohbet kaydı tutulur.
-void handleSendMessage(char* buffer,int clientSocket){
+void handleSendMessage(char* buffer,int clientSocket,onlineUsers* onlineUsersList){
     char fileName[50];
     int lastMessageId;
     messages message;
@@ -237,7 +258,7 @@ void handleSendMessage(char* buffer,int clientSocket){
     send(clientSocket, result, strlen(result), 0);
     free(result);
     //bildirim icin
-    sendNotification(message.receiverId,message.senderId,message.message);
+    sendNotification(message.receiverId,message.senderId,message.message,onlineUsersList);
 }
 //Sohbet kayıtlarını kontrol eder. Listelenmesini saglar.
 void handleCheckMessage(char* buffer,int clientSocket){
