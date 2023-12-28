@@ -59,9 +59,6 @@ bool userCheck(char* phoneNumber); // Kullanici var mi yok mu kontrol eder.
 bool fileCheck(char* fileName); // Dosya var mi yok mu kontrol eder.
 bool checkContactList(FILE *fp,char* phoneNumber); // Rehberde kullanici var mi yok mu kontrol eder.
 
-//onlineUsers onlineUsersList[MAX_CLIENTS]; // Global degisken, online kullanicilar listesi.
-//Tum threadlarda bu fonksiyonu paylasmak icin gereken struct yapıları parametre aktarımları vs. ile okunabilirligi dusuk kod yerine
-//global degisken kullanilmistir.
 
 int main() {
     int server_fd, new_socket;
