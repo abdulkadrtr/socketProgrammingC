@@ -235,10 +235,10 @@ void handleSendMessage(char* buffer,int clientSocket,onlineUsers* onlineUsersLis
     messages message;
     ///senderId , receiverId , message , date , status
     sscanf(buffer, "%[^,],%[^,],%[^,],%[^,],%[^\n]",message.senderId,message.receiverId,message.date,message.status,message.message);
-    sprintf(fileName, "mesajlar/%s,%s.csv",message.senderId,message.receiverId);
+    sprintf(fileName, "messages/%s,%s.csv",message.senderId,message.receiverId);
     if(fileCheck(fileName)==false){
         fileName[0] = '\0';
-        sprintf(fileName, "mesajlar/%s,%s.csv",message.receiverId,message.senderId);
+        sprintf(fileName, "messages/%s,%s.csv",message.receiverId,message.senderId);
     }
     FILE *fp;
     fp = fopen(fileName,"a+");
@@ -298,10 +298,10 @@ void handleGetMessages(char* buffer,int clientSocket){
     char phone[15];
     char phone2[15];
     sscanf(buffer, "%[^,],%s",phone,phone2);
-    sprintf(fileName, "mesajlar/%s,%s.csv",phone,phone2);
+    sprintf(fileName, "messages/%s,%s.csv",phone,phone2);
     if(fileCheck(fileName)==false){
         fileName[0] = '\0';
-        sprintf(fileName, "mesajlar/%s,%s.csv",phone2,phone);
+        sprintf(fileName, "messages/%s,%s.csv",phone2,phone);
     }
     FILE *fp;
     FILE *fpTemp;
@@ -348,10 +348,10 @@ void handleDeleteMessage(char* buffer, int clientSocket){
     int flag = 0,messageId;
     sscanf(buffer, "%[^,],%[^,],%d",phone,phone2,&messageId);
     strcpy(senderPhone,phone);
-    sprintf(fileName, "mesajlar/%s,%s.csv",phone,phone2);
+    sprintf(fileName, "messages/%s,%s.csv",phone,phone2);
     if(fileCheck(fileName)==false){
         memset(fileName,0,sizeof(fileName));
-        sprintf(fileName, "mesajlar/%s,%s.csv",phone2,phone);
+        sprintf(fileName, "messages/%s,%s.csv",phone2,phone);
     }
     FILE *fp;
     FILE *fpTemp;
@@ -519,7 +519,7 @@ void handleListFriends(char* buffer, int clientSocket){
     sscanf(buffer, "%d,%s", &user.userId, user.phoneNumber);
     FILE *fp;
     // filename = rehber + user.phoneNumber + .csv
-    sprintf(fileName, "rehber/%s.csv", user.phoneNumber);
+    sprintf(fileName, "contacts/%s.csv", user.phoneNumber);
     fp = fopen(fileName,"a+");
     if(fp == NULL){
         printf("Dosya acilamadi!\n");
@@ -564,7 +564,7 @@ void handleAddToList(char* buffer,int clientSocket){
     sscanf(buffer, "%[^,],%[^,],%[^,],%s", user1.phoneNumber,user2.phoneNumber, user2.name,user2.surname);
     FILE *fp;
     // filename = rehber + user.phoneNumber + .csv
-    sprintf(fileName, "rehber/%s.csv", user1.phoneNumber);
+    sprintf(fileName, "contacts/%s.csv", user1.phoneNumber);
     fp = fopen(fileName,"a+");
     if(fp == NULL){
         printf("Dosya acilamadi!\n");
@@ -595,7 +595,7 @@ void handleDeleteFromList(char* buffer,int clientSocket){
     int found;
     sscanf(buffer, "%[^,],%s", phoneNumber, phoneNumberD);
     // filename = rehber + user.phoneNumber + .csv
-    sprintf(fileName, "rehber/%s.csv", phoneNumber);
+    sprintf(fileName, "contacts/%s.csv", phoneNumber);
     FILE* inputFp = fopen(fileName, "r");
     FILE* tempFp = fopen("temp.csv", "w");
     if(inputFp == NULL || tempFp == NULL){
