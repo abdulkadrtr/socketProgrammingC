@@ -28,19 +28,19 @@ typedef struct messages{
     char status[2]; // + : okundu, - : okunmadı
 } messages;
 
-int createSocket();
-int establishConnection(int client_fd, struct sockaddr_in *serv_addr);
-void setServerAddress(struct sockaddr_in *serv_addr);
-void sendMessage(int client_fd, const char *message);
-void receiveMessage(int client_fd, char *buffer);
-void userRegister(int client_fd);
-void userListFriends(users user,int client_fd);
-void userAddToList(users user,int client_fd);
-void userDeleteFromList(users user,int client_fd);
-void userSendMessage(users user,int client_fd, char *phoneNumberD);
-void userCheckMessage(users user,int client_fd);
-void* notificationThreadFunc(void* arg);
-users userLogin(int client_fd);
+int createSocket(); // socket olusturur
+int establishConnection(int client_fd, struct sockaddr_in *serv_addr); // server'a baglanir
+void setServerAddress(struct sockaddr_in *serv_addr); // server adresini ayarlar
+void sendMessage(int client_fd, const char *message); // mesaj gonderir
+void receiveMessage(int client_fd, char *buffer); // mesaj alir
+void userRegister(int client_fd); // kullanici kayit islemini gerceklestirir
+void userListFriends(users user,int client_fd); // arkadas listesini gosterir
+void userAddToList(users user,int client_fd); // arkadas ekleme islemini gerceklestirir
+void userDeleteFromList(users user,int client_fd); // arkadas silme islemini gerceklestirir
+void userSendMessage(users user,int client_fd, char *phoneNumberD); // mesaj gonderme islemini gerceklestirir
+void userCheckMessage(users user,int client_fd);// Sohbetlerim istegi yapar, gelen mesajlari listeler, mesaj silme islemi yapar
+void* notificationThreadFunc(void* arg); // Bildirimleri dinler
+users userLogin(int client_fd); // kullanici giris islemini gerceklestirir
 
 int main(int argc, char const* argv[]) {
     int client_fd, status,choice,flagMenu,ret,flag=1;
